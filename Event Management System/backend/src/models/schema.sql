@@ -1,0 +1,72 @@
+-- Drop tables if they exist (in reverse order of dependencies to avoid constraint errors)
+DROP TABLE IF EXISTS attendance;
+DROP TABLE IF EXISTS registrations;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS companies;
+
+-- 1. COMPANIES TABLE
+CREATE TABLE companies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    address TEXT,
+    status ENUM('ACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 2. USERS TABLE
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('PRODUCT_MANAGER', 'ORGANIZER', 'PARTICIPANT') NOT NULL,
+    status ENUM('ACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL
+);
+
+-- 3. EVENTS TABLE
+CREATE TABLE events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    company_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100),
+    venue VARCHAR(255),
+    event_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    capacity INT UNSIGNED NOT NULL,
+    status ENUM('DRAFT', 'PUBLISHED', 'CANCELLED') DEFAULT 'DRAFT',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE RESTRICT
+);
+
+-- 4. REGISTRATIONS TABLE
+CREATE TABLE registrations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    event_id INT NOT NULL,
+    status ENUM('REGISTERED', 'CANCELLED') DEFAULT 'REGISTERED',
+    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE RESTRICT,
+    UNIQUE KEY unique_registration (user_id, event_id)
+);
+
+-- -- 5. ATTENDANCE TABLE
+-- CREATE TABLE attendance (
+--     id INT AUTO_INCREMENT PRIMARY KEY,
+--     registration_id INT NOT NULL UNIQUE,
+--     status ENUM('PRESENT', 'ABSENT') DEFAULT 'PRESENT',
+--     marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE RESTRICT
+-- );
