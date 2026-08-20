@@ -1,14 +1,32 @@
 const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+
 const testRoutes = require('./routes/testRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
+// ─── Middleware ────────────────────────────────────────────────
+// Parse incoming JSON request bodies
 app.use(express.json());
 
-// Mount API routes
+// Parse cookies from incoming requests (needed to read JWT cookie)
+app.use(cookieParser());
+
+// CORS: Allow frontend (port 5173) to send requests WITH cookies
+app.use(cors({
+    origin: 'http://localhost:5173',   // Vite frontend URL
+    credentials: true                   // Allow cookies to be sent cross-origin
+}));
+
+// ─── Routes ───────────────────────────────────────────────────
 app.use('/test', testRoutes);
 
-// Simple root route
+
+app.use('/api/auth', authRoutes);
+
+// Root health check
 app.get('/', (req, res) => {
     res.json({ message: "Event Management API is running" });
 });
