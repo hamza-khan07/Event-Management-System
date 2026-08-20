@@ -62,11 +62,11 @@ CREATE TABLE registrations (
     UNIQUE KEY unique_registration (user_id, event_id)
 );
 
--- -- 5. ATTENDANCE TABLE
--- CREATE TABLE attendance (
---     id INT AUTO_INCREMENT PRIMARY KEY,
---     registration_id INT NOT NULL UNIQUE,
---     status ENUM('PRESENT', 'ABSENT') DEFAULT 'PRESENT',
---     marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
---     FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE RESTRICT
--- );
+-- 5. ATTENDANCE TABLE
+CREATE TABLE attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    registration_id INT NOT NULL UNIQUE,
+    status ENUM('PRESENT', 'ABSENT') DEFAULT 'PRESENT',
+    marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE RESTRICT
+);
