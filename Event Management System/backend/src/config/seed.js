@@ -1,8 +1,17 @@
+const bcrypt = require('bcryptjs');
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+
 const db = require('./db.js');
 
 async function seedData() {
     try {
         console.log("Starting Database Seeding...");
+
+        // Hash a common test password for all seed users
+        // Test password: "Test@1234"
+        const hashedPassword = await bcrypt.hash('Test@1234', 12);
+        console.log("Passwords hashed successfully.");
 
         // 1. Insert 1 Company
         const [companyResult] = await db.query(`
@@ -16,21 +25,21 @@ async function seedData() {
         const [pmResult] = await db.query(`
             INSERT INTO users (company_id, name, email, password, role, status)
             VALUES (?, ?, ?, ?, ?, ?)
-        `, [null, 'Ali Khan', 'ali.pm@fake.com', 'hashed_pass_123', 'PRODUCT_MANAGER', 'ACTIVE']);
+        `, [null, 'Ali Khan', 'ali.pm@fake.com', hashedPassword, 'PRODUCT_MANAGER', 'ACTIVE']);
         console.log(`2. Product Manager created with ID: ${pmResult.insertId}`);
 
         // 3. Insert 1 Organizer (belonging to Company 1)
         const [organizerResult] = await db.query(`
             INSERT INTO users (company_id, name, email, password, role, status)
             VALUES (?, ?, ?, ?, ?, ?)
-        `, [companyId, 'Sara Ahmed', 'sara.organizer@fake.com', 'hashed_pass_123', 'ORGANIZER', 'ACTIVE']);
+        `, [companyId, 'Sara Ahmed', 'sara.organizer@fake.com', hashedPassword, 'ORGANIZER', 'ACTIVE']);
         console.log(`3. Organizer created with ID: ${organizerResult.insertId} (Company ID: ${companyId})`);
 
         // 4. Insert 1 Participant
         const [participantResult] = await db.query(`
             INSERT INTO users (company_id, name, email, password, role, status)
             VALUES (?, ?, ?, ?, ?, ?)
-        `, [null, 'Ahmed Ali', 'ahmed.participant@fake.com', 'hashed_pass_123', 'PARTICIPANT', 'ACTIVE']);
+        `, [null, 'Ahmed Ali', 'ahmed.participant@fake.com', hashedPassword, 'PARTICIPANT', 'ACTIVE']);
         const participantId = participantResult.insertId;
         console.log(`4. Participant created with ID: ${participantId}`);
 
@@ -57,7 +66,12 @@ async function seedData() {
         `, [registrationId, 'PRESENT']);
         console.log(`7. Attendance record created with ID: ${attResult.insertId} (Registration ID: ${registrationId})`);
 
-        console.log("\n Seed Data Populated Successfully!");
+        console.log("\nSeed Data Populated Successfully!");
+        console.log("\nTest Credentials (all users have same password):");
+        console.log("Email: ali.pm@fake.com       | Password: Test@1234 | Role: PRODUCT_MANAGER");
+        console.log("Email: sara.organizer@fake.com | Password: Test@1234 | Role: ORGANIZER");
+        console.log("Email: ahmed.participant@fake.com | Password: Test@1234 | Role: PARTICIPANT");
+
         process.exit(0);
     } catch (error) {
         console.error("Seeding Error:", error.message);
