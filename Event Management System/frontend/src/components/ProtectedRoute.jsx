@@ -1,5 +1,10 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jx';
+import { useAuth } from '../Context/AuthContext.jsx';
+
+
+/**
+ * @param {Array} allowedRoles - (Optional) Un roles ki array jo is page ko dekh sakte hain
+ */
 
 /**
  * ProtectedRoute — Kisi bhi page ko wrap karo jo login chahiye.
@@ -8,10 +13,10 @@ import { useAuth } from '../context/AuthContext.jx';
  * Agar loading → wait karo
  * Agar logged out → /login pe redirect karo
  */
-const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles = [] }) => {  // Default empty array
+    const { isAuthenticated, loading, user } = useAuth();
 
-    // Jab tak /me API check ho rahi hai, kuch mat dikhao
+    // 1. Jab tak /me API check ho rahi hai, kuch mat dikhao
     if (loading) {
         return (
             <div style={{
@@ -27,13 +32,26 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
-    // Logged in nahi → Login page pe bhejo
+    // 2. Logged in nahi → Login page pe bhejo
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
     }
 
-    // Logged in → page dikhao
+    // 3. Agar 'allowedRoles' prop pass kiya gaya hai, toh check karo
+    if (allowedRoles && user) {
+        // Agar user ka role allowed roles mein shamil NAHI hai
+
+        if (!allowedRoles.includes(user.role)) {
+            // Toh usay wapas normal dashboard par bhej do
+            return <Navigate to="/dashboard" replace />;
+        }
+    }
+
+
+    // 4. Agar sab theek hai (login bhi hai, aur role bhi match hai), toh page dikhao
     return children;
 };
 
+
 export default ProtectedRoute;
+

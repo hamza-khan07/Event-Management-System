@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './Context/AuthContext';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -44,6 +44,28 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin Dashboard - Ye sirf Product Manager dekh sakta hai */}
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
+            <AdminUsersPage />
+          </ProtectedRoute>
+        }
+      />
+
+
+      {/* Create Event Page - Ye Manager ya Organizer dekh sakte hain */}
+
+      <Route
+        path="/events/create"
+        element={
+          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER', 'ORGANIZER']}>
+            <CreateEventPage />
           </ProtectedRoute>
         }
       />

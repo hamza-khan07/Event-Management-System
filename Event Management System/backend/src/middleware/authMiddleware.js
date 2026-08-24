@@ -39,6 +39,27 @@ const protect = (req, res, next) => {
     }
 };
 
+/**
+ * Role Authorization Middleware
+ * 
+ * Ye middleware tab chalega jab 'protect' pass ho jayega (yaani user logged in hai).
+ * Isay hum batayenge ke kon kon se roles is route ko access kar sakte hain.
+ */
+const authorizeRoles = (...allowedRoles) => {
+    return (req, res, next) => {
+        // req.user humein 'protect' middleware se mila hai
+        // Agar user ka role un roles mein nahi hai jo humne allow kiye hain
+        if (!allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: `Access Denied. Your role (${req.user.role}) is not authorized to access this route.`
+            });
+        }
 
+        // Agar role match kar gaya, toh aagay (controller ki taraf) jaane do
+        next();
+    };
+};
 
-module.exports = { protect };
+// Dono ko export kar dein
+module.exports = { protect, authorizeRoles };

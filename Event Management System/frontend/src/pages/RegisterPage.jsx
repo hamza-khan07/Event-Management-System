@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../Context/AuthContext';
 
 const RegisterPage = () => {
     const { register } = useAuth();
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-        confirmPassword: ''
+        name: '', email: '', password: '', confirmPassword: ''
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -23,34 +20,21 @@ const RegisterPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
+        setError(''); setSuccess('');
 
-        // Frontend validation
         if (!formData.name.trim() || !formData.email.trim() || !formData.password || !formData.confirmPassword) {
-            setError('All fields are required.');
-            return;
+            setError('All fields are required.'); return;
         }
-
         if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match.');
-            return;
+            setError('Passwords do not match.'); return;
         }
-
         if (formData.password.length < 6) {
-            setError('Password must be at least 6 characters.');
-            return;
+            setError('Password must be at least 6 characters.'); return;
         }
 
         setIsLoading(true);
         try {
-            const result = await register(
-                formData.name,
-                formData.email,
-                formData.password,
-                formData.confirmPassword
-            );
-
+            const result = await register(formData.name, formData.email, formData.password, formData.confirmPassword);
             if (result.success) {
                 setSuccess('Account created! Redirecting to login...');
                 setTimeout(() => navigate('/login'), 1500);
@@ -64,102 +48,78 @@ const RegisterPage = () => {
     };
 
     return (
-        <div className="auth-page">
-            <div className="auth-card">
-                {/* Header */}
-                <div className="auth-header">
-                    <div className="auth-logo">EMS</div>
-                    <h1 className="auth-title">Create Account</h1>
-                    <p className="auth-subtitle">Join as a Participant</p>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl mb-4">
+                        EMS
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
+                    <p className="text-gray-500 mt-2">Join as a Participant</p>
                 </div>
 
-                {/* Error / Success Messages */}
                 {error && (
-                    <div className="auth-error" role="alert">
+                    <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 flex items-center gap-2">
                         <span>⚠</span> {error}
                     </div>
                 )}
                 {success && (
-                    <div className="auth-success" role="status">
+                    <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm mb-6 flex items-center gap-2">
                         <span>✓</span> {success}
                     </div>
                 )}
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="auth-form" noValidate>
-                    <div className="form-group">
-                        <label htmlFor="register-name" className="form-label">Full Name</label>
+                <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                         <input
-                            id="register-name"
-                            type="text"
-                            name="name"
-                            className="form-input"
+                            type="text" name="name"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             placeholder="Your full name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            disabled={isLoading}
-                            autoComplete="name"
+                            value={formData.name} onChange={handleChange} disabled={isLoading}
                         />
                     </div>
-
-                    <div className="form-group">
-                        <label htmlFor="register-email" className="form-label">Email Address</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                         <input
-                            id="register-email"
-                            type="email"
-                            name="email"
-                            className="form-input"
+                            type="email" name="email"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             placeholder="you@example.com"
-                            value={formData.email}
-                            onChange={handleChange}
-                            disabled={isLoading}
-                            autoComplete="email"
+                            value={formData.email} onChange={handleChange} disabled={isLoading}
                         />
                     </div>
-
-                    <div className="form-group">
-                        <label htmlFor="register-password" className="form-label">Password</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                         <input
-                            id="register-password"
-                            type="password"
-                            name="password"
-                            className="form-input"
+                            type="password" name="password"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             placeholder="At least 6 characters"
-                            value={formData.password}
-                            onChange={handleChange}
-                            disabled={isLoading}
-                            autoComplete="new-password"
+                            value={formData.password} onChange={handleChange} disabled={isLoading}
                         />
                     </div>
-
-                    <div className="form-group">
-                        <label htmlFor="register-confirm" className="form-label">Confirm Password</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
                         <input
-                            id="register-confirm"
-                            type="password"
-                            name="confirmPassword"
-                            className="form-input"
+                            type="password" name="confirmPassword"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                             placeholder="Repeat your password"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                            disabled={isLoading}
-                            autoComplete="new-password"
+                            value={formData.confirmPassword} onChange={handleChange} disabled={isLoading}
                         />
                     </div>
 
                     <button
-                        type="submit"
-                        className="auth-btn"
-                        disabled={isLoading}
-                        id="register-submit-btn"
+                        type="submit" disabled={isLoading}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors mt-4 disabled:opacity-50"
                     >
                         {isLoading ? 'Creating Account...' : 'Create Account'}
                     </button>
                 </form>
 
-                <p className="auth-switch">
+                <p className="text-center text-sm text-gray-600 mt-6">
                     Already have an account?{' '}
-                    <Link to="/login" className="auth-link">Sign in</Link>
+                    <Link to="/login" className="text-blue-600 hover:text-blue-800 font-medium transition-colors">
+                        Sign in
+                    </Link>
                 </p>
             </div>
         </div>
