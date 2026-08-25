@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, ArrowDown } from 'lucide-react';
+import StatCard from '../components/dashboard/StatCard';
+import Sidebar from '../components/dashboard/Sidebar';
 
 const DashboardPage = () => {
     const { user, logout } = useAuth();
@@ -104,48 +106,7 @@ const DashboardPage = () => {
             {/* ==================================================== */}
             {/* 1. SIDEBAR (Navigation Area)                         */}
             {/* ==================================================== */}
-            <aside className="w-56 bg-gray-950 text-white h-full p-4 flex flex-col">
-                <div className="mb-6 flex items-center gap-3">
-                    <div className="w-7 h-7 rounded bg-blue-600 font-bold flex items-center justify-center text-xs">
-                        EMS
-                    </div>
-                    <h2 className="text-lg font-bold tracking-wider">Dashboard</h2>
-                </div>
-
-                {/* Navigation Links */}
-                <nav className="flex-1 flex flex-col gap-1">
-                    <a href="#" className="py-2 px-3 bg-blue-600/20 text-blue-400 rounded-lg text-sm font-medium transition">
-                        Overview
-                    </a>
-
-
-                    {/* PM ko kuch extra menus dikhane hain jo baad mein kaam ayenge */}
-                    {user?.role === 'PRODUCT_MANAGER' && (
-                        <>
-                            <a href="#" className="py-2 px-3 hover:bg-slate-800 rounded-lg text-slate-300 text-sm font-medium transition">
-                                Companies
-                            </a>
-                            <a href="#" className="py-2 px-3 hover:bg-slate-800 rounded-lg text-slate-300 text-sm font-medium transition">
-                                Organizers
-                            </a>
-                        </>
-                    )}
-                </nav>
-
-                {/* Profile & Logout Section at bottom */}
-                <div className="mt-auto border-t border-slate-800 pt-4">
-                    <div className="mb-3">
-                        <p className="font-semibold text-sm">{user?.name}</p>
-                        <p className="text-[11px] text-slate-400">{user?.role?.replace('_', ' ')}</p>
-                    </div>
-                    <button
-                        onClick={handleLogout}
-                        className="w-full py-1.5 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition text-xs"
-                    >
-                        Sign Out
-                    </button>
-                </div>
-            </aside>
+            <Sidebar user={user} handleLogout={handleLogout} />
 
             {/* ==================================================== */}
             {/* 2. MAIN CONTENT AREA (Stats Cards)                   */}
@@ -169,29 +130,10 @@ const DashboardPage = () => {
                             <p className="text-sm text-gray-500">Loading numbers from database...</p>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {/* Card 1: Total Companies */}
-                                <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
-                                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Total Companies</p>
-                                    <p className="text-xl font-bold text-blue-600 mt-1">{stats.totalCompanies}</p>
-                                </div>
-
-                                {/* Card 2: Total Organizers */}
-                                <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
-                                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Total Organizers</p>
-                                    <p className="text-xl font-bold text-purple-600 mt-1">{stats.totalOrganizers}</p>
-                                </div>
-
-                                {/* Card 3: Total Participants */}
-                                <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
-                                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Total Participants</p>
-                                    <p className="text-xl font-bold text-emerald-600 mt-1">{stats.totalParticipants}</p>
-                                </div>
-
-                                {/* Card 4: Total Events */}
-                                <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex flex-col items-center justify-center">
-                                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">Total Events</p>
-                                    <p className="text-xl font-bold text-orange-600 mt-1">{stats.totalEvents}</p>
-                                </div>
+                                <StatCard title="Total Companies" count={stats.totalCompanies} colorClass="text-blue-600" />
+                                <StatCard title="Total Organizers" count={stats.totalOrganizers} colorClass="text-purple-600" />
+                                <StatCard title="Total Participants" count={stats.totalParticipants} colorClass="text-emerald-600" />
+                                <StatCard title="Total Events" count={stats.totalEvents} colorClass="text-orange-600" />
                             </div>
                         )}
 
