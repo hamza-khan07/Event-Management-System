@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../Context/AuthContext';
 
-
 const LoginPage = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -13,14 +12,13 @@ const LoginPage = () => {
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
-        setError(''); // Error clear karo jab user type kare
+        setError('');
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
-        // Basic frontend validation
         if (!formData.email.trim() || !formData.password.trim()) {
             setError('Please fill in all fields.');
             return;
@@ -30,10 +28,9 @@ const LoginPage = () => {
         try {
             const result = await login(formData.email, formData.password);
             if (result.success) {
-                navigate('/dashboard'); // Login success → dashboard
+                navigate('/dashboard');
             }
         } catch (err) {
-            // Axios error → backend ka error message dikhao
             const message = err.response?.data?.message || 'Login failed. Please try again.';
             setError(message);
         } finally {
@@ -42,68 +39,67 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="auth-page">
-            <div className="auth-card">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
                 {/* Header */}
-                <div className="auth-header">
-                    <div className="auth-logo">EMS</div>
-                    <h1 className="auth-title">Welcome Back</h1>
-                    <p className="auth-subtitle">Sign in to your account</p>
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl mb-4">
+                        EMS
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900">Welcome Back</h1>
+                    <p className="text-gray-500 mt-2">Sign in to your account</p>
                 </div>
 
                 {/* Error Message */}
                 {error && (
-                    <div className="auth-error" role="alert">
+                    <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-6 flex items-center gap-2">
                         <span>⚠</span> {error}
                     </div>
                 )}
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="auth-form" noValidate>
-                    <div className="form-group">
-                        <label htmlFor="login-email" className="form-label">Email Address</label>
+                <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                         <input
-                            id="login-email"
                             type="email"
                             name="email"
-                            className="form-input"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             placeholder="you@example.com"
                             value={formData.email}
                             onChange={handleChange}
                             disabled={isLoading}
-                            autoComplete="email"
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label htmlFor="login-password" className="form-label">Password</label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                         <input
-                            id="login-password"
                             type="password"
                             name="password"
-                            className="form-input"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                             placeholder="Enter your password"
                             value={formData.password}
                             onChange={handleChange}
                             disabled={isLoading}
-                            autoComplete="current-password"
                         />
                     </div>
 
                     <button
                         type="submit"
-                        className="auth-btn"
                         disabled={isLoading}
-                        id="login-submit-btn"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
                         {isLoading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </form>
 
                 {/* Footer Link */}
-                <p className="auth-switch">
+                <p className="text-center text-sm text-gray-600 mt-6">
                     Don&apos;t have an account?{' '}
-                    <Link to="/register" className="auth-link">Create one</Link>
+                    <Link to="/register" className="text-blue-600 hover:text-blue-800 font-medium transition-colors">
+                        Create one
+                    </Link>
                 </p>
             </div>
         </div>

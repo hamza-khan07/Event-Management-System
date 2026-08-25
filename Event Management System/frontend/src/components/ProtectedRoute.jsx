@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {  // Default empty 
     }
 
     // 3. Agar 'allowedRoles' prop pass kiya gaya hai, toh check karo
-    if (allowedRoles && user) {
+    if (allowedRoles && allowedRoles.length > 0 && user) {
         // Agar user ka role allowed roles mein shamil NAHI hai
 
         if (!allowedRoles.includes(user.role)) {

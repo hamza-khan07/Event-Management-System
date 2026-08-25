@@ -48,7 +48,7 @@ function App() {
         }
       />
 
-      {/* Admin Dashboard - Ye sirf Product Manager dekh sakta hai */}
+      {/* Admin Dashboard - Ye sirf Product Manager dekh sakta hai
       <Route
         path="/admin/users"
         element={
@@ -57,18 +57,18 @@ function App() {
           </ProtectedRoute>
         }
       />
-
+ */}
 
       {/* Create Event Page - Ye Manager ya Organizer dekh sakte hain */}
 
-      <Route
+      {/* <Route
         path="/events/create"
         element={
           <ProtectedRoute allowedRoles={['PRODUCT_MANAGER', 'ORGANIZER']}>
             <CreateEventPage />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       {/* 404 — Koi bhi unknown URL login pe redirect */}
       <Route path="*" element={<Navigate to="/login" replace />} />
