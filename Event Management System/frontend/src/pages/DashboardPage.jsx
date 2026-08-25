@@ -100,11 +100,11 @@ const DashboardPage = () => {
     ];
 
     return (
-        <div className=" min-h-screen bg-slate-100 flex">
+        <div className="h-screen bg-slate-100 flex overflow-hidden">
             {/* ==================================================== */}
             {/* 1. SIDEBAR (Navigation Area)                         */}
             {/* ==================================================== */}
-            <aside className="w-56 bg-gray-950 text-white min-h-screen p-4 flex flex-col">
+            <aside className="w-56 bg-gray-950 text-white h-full p-4 flex flex-col">
                 <div className="mb-6 flex items-center gap-3">
                     <div className="w-7 h-7 rounded bg-blue-600 font-bold flex items-center justify-center text-xs">
                         EMS
@@ -295,7 +295,7 @@ const DashboardPage = () => {
                 {user?.role === 'PRODUCT_MANAGER' && showScrollButton && (
                     <button
                         onClick={scrollToOrganizers}
-                        className="fixed bottom-0.5 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full shadow-lg text-[10px] font-medium flex items-center gap-2 backdrop-blur-md transition-all z-30 animate-bounce"
+                        className="fixed bottom-0.5 left-3/5 -translate-x-1/2 bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded-full shadow-lg text-[10px] font-medium flex items-center gap-1 backdrop-blur-md transition-all z-30 animate-bounce"
                     >
                         Top Organizers
                         <ArrowDown size={14} />
