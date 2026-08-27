@@ -1,10 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './Context/AuthContext';
-
+import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import ProtectedRoute from './components/ProtectedRoute';
+import CompaniesPage from './pages/companiesPage';
 
 function App() {
   const { isAuthenticated, loading } = useAuth();
@@ -44,6 +44,15 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/companies"
+        element={
+          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
+            <CompaniesPage />
           </ProtectedRoute>
         }
       />

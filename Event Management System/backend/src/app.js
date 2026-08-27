@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const testRoutes = require('./routes/testRoutes');
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const companyRoutes = require('./routes/companyRoutes');
 
 
 const app = express();
@@ -27,6 +28,8 @@ app.use('/test', testRoutes);
 app.use('/api/auth', authRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
+
+app.use('/api/companies', companyRoutes);
 
 
 // Root health check
