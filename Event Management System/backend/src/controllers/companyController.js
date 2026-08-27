@@ -119,4 +119,123 @@ const updateCompanyStatus = async (req, res) => {
     }
 };
 
-module.exports = { getAllCompanies, getCompanyById, updateCompanyStatus };
+
+// ─────────────────────────────────────────────
+// 4. CREATE COMPANY
+// ─────────────────────────────────────────────
+const createCompany = async (req, res) => {
+    try {
+        const { name, description, email, phone, address } = req.body;
+
+        if (!name || name.trim() === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'Company name is required'
+            });
+        }
+
+        const [result] = await db.query(
+            'INSERT INTO companies (name, description, email, phone, address, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [name.trim(), description || null, email ? email.trim() : null, phone || null, address || null, 'ACTIVE']
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Company created successfully',
+            data: { id: result.insertId, name: name.trim(), description: description || null, email: email ? email.trim() : null, phone: phone || null, address: address || null, status: 'ACTIVE' }
+        });
+    } catch (error) {
+        console.error('Create Company Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to create company' });
+    }
+};
+
+
+// ─────────────────────────────────────────────
+// 5. UPDATE COMPANY INFO (name, email, phone, description, address)
+// ─────────────────────────────────────────────
+// Kyun: PM company ki info galat ho ya update karni ho to
+// woh drawer se seedha edit kar sake — bina delete/recreate ke.
+const updateCompany = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description, email, phone, address } = req.body;
+
+        // Name required hai — baaki fields optional hain
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ success: false, message: 'Company name is required' });
+        }
+
+        // UPDATE query — sirf info fields update hongi, status touch nahi hoga
+        await db.query(
+            'UPDATE companies SET name=?, description=?, email=?, phone=?, address=?, updated_at=NOW() WHERE id=?',
+            [name.trim(), description || null, email ? email.trim() : null, phone || null, address || null, id]
+        );
+
+        res.status(200).json({ success: true, message: 'Company updated successfully' });
+    } catch (error) {
+        console.error('Update Company Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update company' });
+    }
+};
+
+// ─────────────────────────────────────────────
+// 6. ADD ORGANIZER TO A COMPANY
+// ─────────────────────────────────────────────
+// Kyun: PM kisi company ke drawer se seedha ek nayi organizer
+// account bana sake aur use us company se link kar sake.
+// bcrypt isliye use ho raha hai kyunke password plain text mein
+// DB mein nahi rehna chahiye — yeh security ka basic rule hai.
+const bcrypt = require('bcryptjs');
+
+const addOrganizer = async (req, res) => {
+    try {
+        const { id: companyId } = req.params;               // URL se company ka id
+        const { name, email, password } = req.body;
+
+        // --- Validation ---
+        if (!name || !email || !password) {
+            return res.status(400).json({ success: false, message: 'Name, email aur password sab required hain' });
+        }
+        if (password.length < 6) {
+            return res.status(400).json({ success: false, message: 'Password kam az kam 6 characters ka hona chahiye' });
+        }
+
+        // --- Company exist karti hai? ---
+        const [companies] = await db.query('SELECT id FROM companies WHERE id = ?', [companyId]);
+        if (companies.length === 0) {
+            return res.status(404).json({ success: false, message: 'Company nahi mili' });
+        }
+
+        // --- Duplicate email check ---
+        // Email users table mein UNIQUE hai, duplicate insert karne par MySQL error deta
+        // Isliye pehle check karo taake user-friendly message de sakein
+        const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email.trim()]);
+        if (existing.length > 0) {
+            return res.status(409).json({ success: false, message: 'Yeh email pehle se registered hai' });
+        }
+
+        // --- Password hash karo ---
+        // bcrypt.hash(password, saltRounds) — 10 salt rounds industry standard hai
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // --- User insert karo —  role=ORGANIZER, company_id linked ---
+        const [result] = await db.query(
+            'INSERT INTO users (company_id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [companyId, name.trim(), email.trim(), hashedPassword, 'ORGANIZER', 'ACTIVE']
+        );
+
+        // Password response mein kabhi mat bhejna — security best practice
+        res.status(201).json({
+            success: true,
+            message: 'Organizer successfully create ho gaya',
+            data: { id: result.insertId, name: name.trim(), email: email.trim(), status: 'ACTIVE' }
+        });
+    } catch (error) {
+        console.error('Add Organizer Error:', error);
+        res.status(500).json({ success: false, message: 'Organizer create karne mein error aaya' });
+    }
+};
+
+module.exports = { getAllCompanies, getCompanyById, updateCompanyStatus, createCompany, updateCompany, addOrganizer };
+
