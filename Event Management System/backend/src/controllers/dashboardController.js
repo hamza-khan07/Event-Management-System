@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const getPMStats = async (req, res) => {
+const getPMStats = async (req, res, next) => {
     try {
         // Query 1: Database mein mojood tamam companies ko ginte hain
         const [companies] = await db.query('SELECT COUNT(*) as total FROM companies');
@@ -24,15 +24,12 @@ const getPMStats = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error("Dashboard Stats Error: ", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to fetch dashboard statistics"
-        });
+        next(error);
     }
 };
 
-
-
 module.exports = { getPMStats };
+
+
+
 

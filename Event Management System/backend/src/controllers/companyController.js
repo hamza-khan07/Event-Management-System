@@ -7,7 +7,7 @@ const db = require('../config/db');
 // Kyun: PM ko saari companies ek table mein dekhni hain.
 // Search aur pagination isliye ke data zyada hone par bhi
 // page hang na ho (performance best practice).
-const getAllCompanies = async (req, res) => {
+const getAllCompanies = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -41,8 +41,7 @@ const getAllCompanies = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get Companies Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch companies' });
+        next(error);
     }
 };
 
@@ -51,7 +50,7 @@ const getAllCompanies = async (req, res) => {
 // ─────────────────────────────────────────────
 // Kyun: PM kisi ek company par click kare to uski poori
 // details aur us se linked organizers dikhayi jayein (JOIN query).
-const getCompanyById = async (req, res) => {
+const getCompanyById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
@@ -85,8 +84,7 @@ const getCompanyById = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get Company Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch company' });
+        next(error);
     }
 };
 
@@ -96,16 +94,12 @@ const getCompanyById = async (req, res) => {
 // ─────────────────────────────────────────────
 // Kyun: PM chahta hai ke kisi company ko bina delete kiye
 // temporarily band kar sake. Yeh "Soft Control" hai.
-const updateCompanyStatus = async (req, res) => {
+const updateCompanyStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { status } = req.body; // 'active' ya 'suspended'
+        const { status } = req.body; // 'ACTIVE' ya 'SUSPENDED'
 
-        // Validation: sirf yeh 2 values allowed hain
-        const allowedStatuses = ['ACTIVE', 'SUSPENDED'];
-        if (!allowedStatuses.includes(status)) {
-            return res.status(400).json({ success: false, message: 'Invalid status value' });
-        }
+        // Validation will be handled by Zod Middleware
 
         await db.query('UPDATE companies SET status = ? WHERE id = ?', [status, id]);
 
@@ -114,8 +108,7 @@ const updateCompanyStatus = async (req, res) => {
             message: `Company ${status === 'ACTIVE' ? 'ACTIVE' : 'SUSPENDED'} successfully`
         });
     } catch (error) {
-        console.error('Update Status Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to update status' });
+        next(error);
     }
 };
 
@@ -123,16 +116,10 @@ const updateCompanyStatus = async (req, res) => {
 // ─────────────────────────────────────────────
 // 4. CREATE COMPANY
 // ─────────────────────────────────────────────
-const createCompany = async (req, res) => {
+const createCompany = async (req, res, next) => {
     try {
         const { name, description, email, phone, address } = req.body;
-
-        if (!name || name.trim() === '') {
-            return res.status(400).json({
-                success: false,
-                message: 'Company name is required'
-            });
-        }
+        // Manual validation replaced by Zod
 
         const [result] = await db.query(
             'INSERT INTO companies (name, description, email, phone, address, status) VALUES (?, ?, ?, ?, ?, ?)',
@@ -145,8 +132,7 @@ const createCompany = async (req, res) => {
             data: { id: result.insertId, name: name.trim(), description: description || null, email: email ? email.trim() : null, phone: phone || null, address: address || null, status: 'ACTIVE' }
         });
     } catch (error) {
-        console.error('Create Company Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to create company' });
+        next(error);
     }
 };
 
@@ -156,15 +142,12 @@ const createCompany = async (req, res) => {
 // ─────────────────────────────────────────────
 // Kyun: PM company ki info galat ho ya update karni ho to
 // woh drawer se seedha edit kar sake — bina delete/recreate ke.
-const updateCompany = async (req, res) => {
+const updateCompany = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { name, description, email, phone, address } = req.body;
 
-        // Name required hai — baaki fields optional hain
-        if (!name || name.trim() === '') {
-            return res.status(400).json({ success: false, message: 'Company name is required' });
-        }
+        // Manual validation replaced by Zod
 
         // UPDATE query — sirf info fields update hongi, status touch nahi hoga
         await db.query(
@@ -174,8 +157,7 @@ const updateCompany = async (req, res) => {
 
         res.status(200).json({ success: true, message: 'Company updated successfully' });
     } catch (error) {
-        console.error('Update Company Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to update company' });
+        next(error);
     }
 };
 
@@ -188,18 +170,12 @@ const updateCompany = async (req, res) => {
 // DB mein nahi rehna chahiye — yeh security ka basic rule hai.
 const bcrypt = require('bcryptjs');
 
-const addOrganizer = async (req, res) => {
+const addOrganizer = async (req, res, next) => {
     try {
         const { id: companyId } = req.params;               // URL se company ka id
         const { name, email, password } = req.body;
 
-        // --- Validation ---
-        if (!name || !email || !password) {
-            return res.status(400).json({ success: false, message: 'Name, email aur password sab required hain' });
-        }
-        if (password.length < 6) {
-            return res.status(400).json({ success: false, message: 'Password kam az kam 6 characters ka hona chahiye' });
-        }
+        // --- Zod validation will handle the basic checks ---
 
         // --- Company exist karti hai? ---
         const [companies] = await db.query('SELECT id FROM companies WHERE id = ?', [companyId]);
@@ -208,15 +184,12 @@ const addOrganizer = async (req, res) => {
         }
 
         // --- Duplicate email check ---
-        // Email users table mein UNIQUE hai, duplicate insert karne par MySQL error deta
-        // Isliye pehle check karo taake user-friendly message de sakein
         const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email.trim()]);
         if (existing.length > 0) {
             return res.status(409).json({ success: false, message: 'Yeh email pehle se registered hai' });
         }
 
         // --- Password hash karo ---
-        // bcrypt.hash(password, saltRounds) — 10 salt rounds industry standard hai
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // --- User insert karo —  role=ORGANIZER, company_id linked ---
@@ -225,15 +198,13 @@ const addOrganizer = async (req, res) => {
             [companyId, name.trim(), email.trim(), hashedPassword, 'ORGANIZER', 'ACTIVE']
         );
 
-        // Password response mein kabhi mat bhejna — security best practice
         res.status(201).json({
             success: true,
             message: 'Organizer successfully create ho gaya',
             data: { id: result.insertId, name: name.trim(), email: email.trim(), status: 'ACTIVE' }
         });
     } catch (error) {
-        console.error('Add Organizer Error:', error);
-        res.status(500).json({ success: false, message: 'Organizer create karne mein error aaya' });
+        next(error);
     }
 };
 

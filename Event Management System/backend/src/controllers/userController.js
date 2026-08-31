@@ -15,7 +15,7 @@ const VALID_ROLES = ['ORGANIZER', 'PARTICIPANT'];
 // Ek hi function Organizer aur Participant dono handle karta hai.
 // Agar alag alag function banate toh same code do jagah hota — DRY violation.
 // ─────────────────────────────────────────────────────────────────
-const getUsersByRole = async (req, res) => {
+const getUsersByRole = async (req, res, next) => {
     try {
         const { role, search = '', page = 1, limit = 10 } = req.query;
 
@@ -81,8 +81,7 @@ const getUsersByRole = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get Users By Role Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch users' });
+        next(error);
     }
 };
 
@@ -95,7 +94,7 @@ const getUsersByRole = async (req, res) => {
 // company ne create kiye jisme yeh organizer hai)
 // Participant ke liye: uski registrations dikhayenge
 // ─────────────────────────────────────────────────────────────────
-const getUserById = async (req, res) => {
+const getUserById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
@@ -150,8 +149,7 @@ const getUserById = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Get User By ID Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch user' });
+        next(error);
     }
 };
 
@@ -164,18 +162,12 @@ const getUserById = async (req, res) => {
 // bina delete kiye — yeh "Soft Control" pattern hai.
 // Yahi pattern Company module mein bhi use kiya tha (DRY).
 // ─────────────────────────────────────────────────────────────────
-const updateUserStatus = async (req, res) => {
+const updateUserStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
 
-        const allowedStatuses = ['ACTIVE', 'SUSPENDED'];
-        if (!allowedStatuses.includes(status)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid status. Must be ACTIVE or SUSPENDED'
-            });
-        }
+        // Validation handled by Zod Middleware
 
         // Pehle check karo ke user exist karta hai
         const [existing] = await db.query('SELECT id, role FROM users WHERE id = ?', [id]);
@@ -199,8 +191,7 @@ const updateUserStatus = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Update User Status Error:', error);
-        res.status(500).json({ success: false, message: 'Failed to update user status' });
+        next(error);
     }
 };
 

@@ -6,6 +6,10 @@ const testRoutes = require('./routes/testRoutes');
 const authRoutes = require('./routes/authRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const companyRoutes = require('./routes/companyRoutes');
+const userRoutes = require('./routes/userRoutes');
+const organizerRoutes = require('./routes/organizerRoutes');
+const eventRoutes = require('./routes/eventRoutes');
+
 
 
 const app = express();
@@ -25,12 +29,18 @@ app.use(cors({
 
 // ─── Routes ───────────────────────────────────────────────────
 app.use('/test', testRoutes);
+
 app.use('/api/auth', authRoutes);
 
 app.use('/api/dashboard', dashboardRoutes);
 
 app.use('/api/companies', companyRoutes);
 
+app.use('/api/users', userRoutes);
+
+app.use('/api/organizer', organizerRoutes);
+
+app.use('/api/events', eventRoutes);
 
 // Root health check
 app.get('/', (req, res) => {

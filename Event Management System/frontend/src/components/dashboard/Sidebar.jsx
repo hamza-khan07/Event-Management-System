@@ -5,6 +5,26 @@ import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar = ({ user, handleLogout }) => {
     const location = useLocation();
+
+    // linkClass: exact path match ke liye (most links ke liye)
+    const linkClass = (path) =>
+        `py-2 px-3 rounded-lg text-sm font-medium transition ${
+            location.pathname === path
+                ? 'bg-blue-600/20 text-blue-400'
+                : 'hover:bg-slate-800 text-slate-300'
+        }`;
+
+    // prefixLinkClass: prefix match ke liye
+    // Kyun? "My Events" link /organizer/events pe hai lekin jab user
+    // /organizer/events/create par ho tab bhi yeh active dikhna chahiye.
+    // location.pathname.startsWith() se yeh achieve hota hai.
+    const prefixLinkClass = (prefix) =>
+        `py-2 px-3 rounded-lg text-sm font-medium transition ${
+            location.pathname.startsWith(prefix)
+                ? 'bg-blue-600/20 text-blue-400'
+                : 'hover:bg-slate-800 text-slate-300'
+        }`;
+
     return (
         <aside className="w-56 bg-gray-950 text-white h-full p-4 flex flex-col">
             <div className="mb-6 flex items-center gap-3">
@@ -15,38 +35,41 @@ const Sidebar = ({ user, handleLogout }) => {
             </div>
 
 
-
-            <Link
-                to="/dashboard"
-                className={`py-2 px-3 rounded-lg text-sm font-medium transition ${location.pathname === '/dashboard'
-                    ? 'bg-blue-600/20 text-blue-400'
-                    : 'hover:bg-slate-800 text-slate-300'
-                    }`}
-            >
-                Overview
-            </Link>
+            {/* ── PM-only Navigation ── */}
             {user?.role === 'PRODUCT_MANAGER' && (
                 <>
-                    <Link
-                        to="/companies"
-                        className={`py-2 px-3 rounded-lg text-sm font-medium transition ${location.pathname === '/companies'
-                            ? 'bg-blue-600/20 text-blue-400'
-                            : 'hover:bg-slate-800 text-slate-300'
-                            }`}
-                    >
+
+                    <Link to="/dashboard" className={linkClass('/dashboard')}>
+                        Overview
+                    </Link>
+                    <Link to="/companies" className={linkClass('/companies')}>
                         Companies
                     </Link>
-                    <Link
-                        to="#"
-                        className="py-2 px-3 hover:bg-slate-800 rounded-lg text-slate-300 text-sm font-medium transition"
-                    >
+                    <Link to="/organizers" className={linkClass('/organizers')}>
                         Organizers
+                    </Link>
+                    <Link to="/participants" className={linkClass('/participants')}>
+                        Participants
                     </Link>
                 </>
             )}
 
-
-
+            {/* ── Organizer-only Navigation ── */}
+            {user?.role === 'ORGANIZER' && (
+                <>
+                    <Link to="/organizer/dashboard" className={linkClass('/organizer/dashboard')}>
+                        Overview
+                    </Link>
+                    <Link to="/organizer/company" className={linkClass('/organizer/company')}>
+                        My Company
+                    </Link>
+                    {/* prefixLinkClass use kiya — /organizer/events/create par bhi active rahe */}
+                    <Link to="/organizer/events" className={prefixLinkClass('/organizer/events')}>
+                        My Events
+                    </Link>
+                </>
+            )}
+            
             {/* Profile & Logout Section at bottom */}
             <div className="mt-auto border-t border-slate-800 pt-4">
                 <div className="mb-3">

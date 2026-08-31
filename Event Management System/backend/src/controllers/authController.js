@@ -23,7 +23,6 @@ const sendTokenCookie = (res, user) => {
     const expireHours = parseInt(process.env.JWT_EXPIRES_IN, 10) || 24;
 
     res.cookie('token', token, {
-
         httpOnly: true,          // JavaScript is cookie ko read nahi kar sakti
         secure: false,           // Development mein false (HTTPS nahi hai), production mein true
         sameSite: 'lax',        // CSRF protection
@@ -33,72 +32,17 @@ const sendTokenCookie = (res, user) => {
     return token;
 };
 
-// ─── Helper: Password Validation ──────────────────────────────
-const validatePassword = (password) => {
-    // Minimum 6 characters
-    if (password.length < 6) {
-        return 'Password must be at least 6 characters long.';
-    }
-    return null; // null means valid
-};
-
-// ─── Helper: Email Validation ─────────────────────────────────
-const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-};
-
-
 // ═══════════════════════════════════════════════════════════════
 // REGISTER
 // POST /api/auth/register
 // ═══════════════════════════════════════════════════════════════
-const register = async (req, res) => {
+const register = async (req, res, next) => {
     try {
-        const { name, email, password, confirmPassword } = req.body;
+        const { name, email, password } = req.body;
 
-        // ── 1. Required Fields Check ──
-        if (!name || !email || !password || !confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: 'All fields are required: name, email, password, confirmPassword.'
-            });
-        }
+        // Manual validation replaced by Zod Validation Middleware
 
-        // ── 2. Name Check ──
-        if (name.trim().length < 2) {
-            return res.status(400).json({
-                success: false,
-                message: 'Name must be at least 2 characters.'
-            });
-        }
-
-        // ── 3. Email Format Check ──
-        if (!validateEmail(email)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide a valid email address.'
-            });
-        }
-
-        // ── 4. Password Strength Check ──
-        const passwordError = validatePassword(password);
-        if (passwordError) {
-            return res.status(400).json({
-                success: false,
-                message: passwordError
-            });
-        }
-
-        // ── 5. Password Match Check ──
-        if (password !== confirmPassword) {
-            return res.status(400).json({
-                success: false,
-                message: 'Passwords do not match.'
-            });
-        }
-
-        // ── 6. Duplicate Email Check ──
+        // ── Duplicate Email Check ──
         const [existingUsers] = await db.query(
             'SELECT id FROM users WHERE email = ?',
             [email.toLowerCase().trim()]
@@ -111,11 +55,11 @@ const register = async (req, res) => {
             });
         }
 
-        // ── 7. Password Hash Karo ──
+        // ── Password Hash Karo ──
         // bcrypt.hash(password, saltRounds) — saltRounds=12 means very secure
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // ── 8. User Insert Karo ──
+        // ── User Insert Karo ──
         // IMPORTANT: Role is always 'PARTICIPANT' for public registration
         // PRODUCT_MANAGER aur ORGANIZER public nahi bana sakte — security rule
         const [result] = await db.query(
@@ -123,7 +67,7 @@ const register = async (req, res) => {
             [name.trim(), email.toLowerCase().trim(), hashedPassword, 'PARTICIPANT', null]
         );
 
-        // ── 9. Safe Response (NO password in response) ──
+        // ── Safe Response (NO password in response) ──
         return res.status(201).json({
             success: true,
             message: 'Account created successfully. Please log in.',
@@ -136,11 +80,7 @@ const register = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Register error:', error.message);
-        return res.status(500).json({
-            success: false,
-            message: 'Server error during registration. Please try again.'
-        });
+        next(error);
     }
 };
 
@@ -149,33 +89,19 @@ const register = async (req, res) => {
 // LOGIN
 // POST /api/auth/login
 // ═══════════════════════════════════════════════════════════════
-const login = async (req, res) => {
+const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
-        // ── 1. Required Fields Check ──
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email and password are required.'
-            });
-        }
+        // Manual validation replaced by Zod Validation Middleware
 
-        // ── 2. Email Format Check ──
-        if (!validateEmail(email)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Please provide a valid email address.'
-            });
-        }
-
-        // ── 3. User Dhundo by Email ──
+        // ── User Dhundo by Email ──
         const [users] = await db.query(
             'SELECT id, company_id, name, email, password, role, status FROM users WHERE email = ?',
             [email.toLowerCase().trim()]
         );
 
-        // ── 4. User nahi mila ──
+        // ── User nahi mila ──
         // NOTE: Same message as wrong password — do not reveal which one is wrong (security)
         if (users.length === 0) {
             return res.status(401).json({
@@ -186,7 +112,7 @@ const login = async (req, res) => {
 
         const user = users[0];
 
-        // ── 5. Password Compare Karo ──
+        // ── Password Compare Karo ──
         // bcrypt.compare(entered, storedHash) — returns true or false
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
@@ -197,7 +123,7 @@ const login = async (req, res) => {
             });
         }
 
-        // ── 6. Account Status Check ──
+        // ── Account Status Check ──
         if (user.status === 'SUSPENDED') {
             return res.status(403).json({
                 success: false,
@@ -205,10 +131,10 @@ const login = async (req, res) => {
             });
         }
 
-        // ── 7. JWT Token Banao aur Cookie Mein Set Karo ──
+        // ── JWT Token Banao aur Cookie Mein Set Karo ──
         sendTokenCookie(res, user);
 
-        // ── 8. Safe User Info Return Karo (NO password) ──
+        // ── Safe User Info Return Karo (NO password) ──
         return res.status(200).json({
             success: true,
             message: 'Login successful.',
@@ -222,11 +148,7 @@ const login = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Login error:', error.message);
-        return res.status(500).json({
-            success: false,
-            message: 'Server error during login. Please try again.'
-        });
+        next(error);
     }
 };
 
@@ -254,7 +176,7 @@ const logout = (req, res) => {
 // GET CURRENT USER (ME)
 // GET /api/auth/me
 // ═══════════════════════════════════════════════════════════════
-const getMe = async (req, res) => {
+const getMe = async (req, res, next) => {
     try {
         // req.user already attached by authMiddleware
         // Fresh data fetch from DB (in case something changed)
@@ -294,13 +216,8 @@ const getMe = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('GetMe error:', error.message);
-        return res.status(500).json({
-            success: false,
-            message: 'Server error.'
-        });
+        next(error);
     }
 };
-
 
 module.exports = { register, login, logout, getMe };

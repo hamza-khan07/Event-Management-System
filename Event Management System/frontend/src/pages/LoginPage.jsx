@@ -27,7 +27,14 @@ const LoginPage = () => {
         setIsLoading(true);
         try {
             const result = await login(formData.email, formData.password);
-            if (result.success) navigate('/dashboard');
+            if (result.success) {
+                // Role ke hisaab se sahi dashboard pe redirect karein
+                if (result.user.role === 'ORGANIZER') {
+                    navigate('/organizer/dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
         } finally {

@@ -5,9 +5,16 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import CompaniesPage from './pages/companiesPage';
+import OrganizersPage from './pages/OrganizersPage';
+import ParticipantsPage from './pages/ParticipantsPage';
+import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
+import OrganizerCompanyPage from './pages/OrganizerCompanyPage';
+import MyEventsPage from './pages/MyEventsPage';
+import CreateEventPage from './pages/CreateEventPage';
+import EditEventPage from './pages/EditEventPage'; // ← yeh missing tha!
 
 function App() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
 
   // Jab tak session check ho rahi hai, blank screen dikhao
   if (loading) {
@@ -28,10 +35,14 @@ function App() {
 
   return (
     <Routes>
-      {/* Root → Agar logged in to dashboard, warna login */}
+      {/* Root → Agar logged in to dashboard (role based), warna login */}
       <Route
         path="/"
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
+        element={
+          isAuthenticated
+            ? (user?.role === 'ORGANIZER' ? <Navigate to="/organizer/dashboard" replace /> : <Navigate to="/dashboard" replace />)
+            : <Navigate to="/login" replace />
+        }
       />
 
       {/* Public Routes */}
@@ -48,6 +59,7 @@ function App() {
         }
       />
 
+      {/* PRODUCT_MANAGER Routes */}
       <Route
         path="/companies"
         element={
@@ -56,30 +68,72 @@ function App() {
           </ProtectedRoute>
         }
       />
-
-      {/* Admin Dashboard - Ye sirf Product Manager dekh sakta hai
       <Route
-        path="/admin/users"
+        path="/organizers"
         element={
           <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
-            <AdminUsersPage />
+            <OrganizersPage />
           </ProtectedRoute>
         }
       />
- */}
-
-      {/* Create Event Page - Ye Manager ya Organizer dekh sakte hain */}
-
-      {/* <Route
-        path="/events/create"
+      <Route
+        path="/participants"
         element={
-          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER', 'ORGANIZER']}>
+          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
+            <ParticipantsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ORGANIZER Routes */}
+      <Route
+        path="/organizer/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['ORGANIZER']}>
+            <OrganizerDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      {/* Organizer ki company profile */}
+      <Route
+        path="/organizer/company"
+        element={
+          <ProtectedRoute allowedRoles={['ORGANIZER']}>
+            <OrganizerCompanyPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* My Events list page */}
+      <Route
+        path="/organizer/events"
+        element={
+          <ProtectedRoute allowedRoles={['ORGANIZER']}>
+            <MyEventsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Create Event form page */}
+      <Route
+        path="/organizer/events/create"
+        element={
+          <ProtectedRoute allowedRoles={['ORGANIZER']}>
             <CreateEventPage />
           </ProtectedRoute>
         }
-      /> */}
+      />
 
-      {/* 404 — Koi bhi unknown URL login pe redirect */}
+      {/* Edit Event form page — :id → dynamic event ID */}
+      <Route
+        path="/organizer/events/edit/:id"
+        element={
+          <ProtectedRoute allowedRoles={['ORGANIZER']}>
+            <EditEventPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
