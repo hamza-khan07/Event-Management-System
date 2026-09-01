@@ -1,31 +1,31 @@
+// frontend/src/App.jsx
+// RESPONSIBILITY: Root router. Public landing at "/", protected dashboards behind auth.
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './Context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
-import CompaniesPage from './pages/companiesPage';
-import OrganizersPage from './pages/OrganizersPage';
-import ParticipantsPage from './pages/ParticipantsPage';
+
+import LandingPage           from './pages/LandingPage';
+import LoginPage             from './pages/LoginPage';
+import RegisterPage          from './pages/RegisterPage';
+import DashboardPage         from './pages/DashboardPage';
+import CompaniesPage         from './pages/companiesPage';
+import OrganizersPage        from './pages/OrganizersPage';
+import ParticipantsPage      from './pages/ParticipantsPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
-import OrganizerCompanyPage from './pages/OrganizerCompanyPage';
-import MyEventsPage from './pages/MyEventsPage';
-import CreateEventPage from './pages/CreateEventPage';
-import EditEventPage from './pages/EditEventPage'; // ← yeh missing tha!
+import OrganizerCompanyPage  from './pages/OrganizerCompanyPage';
+import MyEventsPage          from './pages/MyEventsPage';
+import CreateEventPage       from './pages/CreateEventPage';
+import EditEventPage         from './pages/EditEventPage';
 
 function App() {
   const { isAuthenticated, loading, user } = useAuth();
 
-  // Jab tak session check ho rahi hai, blank screen dikhao
   if (loading) {
     return (
       <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        minHeight: '100vh',
-        fontSize: '18px',
-        color: '#6b7280',
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        minHeight: '100vh', fontSize: '18px', color: '#6b7280',
         fontFamily: 'system-ui, sans-serif'
       }}>
         Loading...
@@ -35,21 +35,14 @@ function App() {
 
   return (
     <Routes>
-      {/* Root → Agar logged in to dashboard (role based), warna login */}
-      <Route
-        path="/"
-        element={
-          isAuthenticated
-            ? (user?.role === 'ORGANIZER' ? <Navigate to="/organizer/dashboard" replace /> : <Navigate to="/dashboard" replace />)
-            : <Navigate to="/login" replace />
-        }
-      />
+      {/* Public landing page -- always accessible at "/" */}
+      <Route path="/" element={<LandingPage />} />
 
-      {/* Public Routes */}
-      <Route path="/login" element={<LoginPage />} />
+      {/* Auth Routes */}
+      <Route path="/login"    element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected Route — login zaroori */}
+      {/* Protected: Generic dashboard */}
       <Route
         path="/dashboard"
         element={
@@ -59,7 +52,7 @@ function App() {
         }
       />
 
-      {/* PRODUCT_MANAGER Routes */}
+      {/* Protected: PRODUCT_MANAGER Routes */}
       <Route
         path="/companies"
         element={
@@ -85,7 +78,7 @@ function App() {
         }
       />
 
-      {/* ORGANIZER Routes */}
+      {/* Protected: ORGANIZER Routes */}
       <Route
         path="/organizer/dashboard"
         element={
@@ -94,7 +87,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-      {/* Organizer ki company profile */}
       <Route
         path="/organizer/company"
         element={
@@ -103,8 +95,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
-      {/* My Events list page */}
       <Route
         path="/organizer/events"
         element={
@@ -113,8 +103,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
-      {/* Create Event form page */}
       <Route
         path="/organizer/events/create"
         element={
@@ -123,8 +111,6 @@ function App() {
           </ProtectedRoute>
         }
       />
-
-      {/* Edit Event form page — :id → dynamic event ID */}
       <Route
         path="/organizer/events/edit/:id"
         element={
@@ -134,7 +120,7 @@ function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
