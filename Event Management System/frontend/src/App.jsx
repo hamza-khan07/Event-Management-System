@@ -17,6 +17,8 @@ import OrganizerCompanyPage  from './pages/OrganizerCompanyPage';
 import MyEventsPage          from './pages/MyEventsPage';
 import CreateEventPage       from './pages/CreateEventPage';
 import EditEventPage         from './pages/EditEventPage';
+import AllEventsPage         from './pages/AllEventsPage'; // /events — public dedicated page
+import EventDetailPage       from './pages/EventDetailPage'; // /events/:id — single event detail
 
 function App() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -37,6 +39,12 @@ function App() {
     <Routes>
       {/* Public landing page -- always accessible at "/" */}
       <Route path="/" element={<LandingPage />} />
+
+      {/* Public: All Events page */}
+      <Route path="/events" element={<AllEventsPage />} />
+
+      {/* Public: Single Event Detail page — :id se event dhundhta hai */}
+      <Route path="/events/:id" element={<EventDetailPage />} />
 
       {/* Auth Routes */}
       <Route path="/login"    element={<LoginPage />} />

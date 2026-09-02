@@ -5,6 +5,7 @@
 // Structure: Navbar -> Hero -> Featured Events -> How It Works -> Contact -> Footer
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // /events page par navigate karne ke liye
 import {
     Search,
     Compass,
@@ -114,6 +115,7 @@ const HOW_IT_WORKS = [
 ];
 
 const LandingPage = () => {
+    const navigate = useNavigate(); // page navigation ke liye
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState('All Events');
 
@@ -221,7 +223,7 @@ const LandingPage = () => {
             </section>
 
             {/* ---- 2. FEATURED EVENTS SECTION ---- */}
-            <section id="events" className="py-20 bg-white">
+            <section id="events" className="py-10 bg-white">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center max-w-2xl mx-auto mb-12">
                         <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
@@ -239,8 +241,8 @@ const LandingPage = () => {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${activeTab === tab
-                                        ? 'bg-gray-900 text-white shadow-sm'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                                    ? 'bg-gray-900 text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                                     }`}
                             >
                                 {tab}
@@ -248,7 +250,7 @@ const LandingPage = () => {
                         ))}
                     </div>
 
-                    {/* Events Grid */}
+                    {/* Events Grid — filtered results dikhata hai */}
                     {filteredEvents.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
                             {filteredEvents.map((event) => (
@@ -271,11 +273,27 @@ const LandingPage = () => {
                             </button>
                         </div>
                     )}
+
+                    {/* ---- "Explore All Events" CTA Button ---- */}
+                    {/* Wireframe ke mutabiq: Featured Events section ke neeche center mein */}
+                    <div className="flex justify-center mt-12">
+                        <button
+                            onClick={() => navigate('/events')}
+                            className="inline-flex items-center gap-2 px-8 py-3.5 bg-gray-900 hover:bg-indigo-700 text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group"
+                        >
+                            <span>Explore All Events</span>
+                            {/* Arrow icon hover par right mein thoda move karta hai */}
+                            <ArrowRight
+                                size={17}
+                                className="transition-transform duration-200 group-hover:translate-x-1"
+                            />
+                        </button>
+                    </div>
                 </div>
             </section>
 
             {/* ---- 3. HOW IT WORKS SECTION ---- */}
-            <section id="how-it-works" className="py-20 bg-gray-50 border-t border-gray-100">
+            <section id="how-it-works" className="py-5 bg-gray-50 border-t border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center max-w-2xl mx-auto mb-14">
                         <span className="text-xs font-bold uppercase tracking-widest text-indigo-600">

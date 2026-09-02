@@ -10,8 +10,8 @@ import { Calendar, Menu, X, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../Context/AuthContext';
 
 const NAV_LINKS = [
-    { label: 'Discover', href: '#discover' },
-    { label: 'Explore Events', href: '#events' },
+    { label: 'Home', href: '#home' },
+    { label: 'Events', href: '#events' },
     { label: 'How It Works', href: '#how-it-works' },
     { label: 'Contact', href: '#contact' },
 ];
@@ -83,9 +83,8 @@ const Navbar = () => {
                     <div className="hidden md:flex items-center gap-3">
                         {isAuthenticated ? (
                             <>
-                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${
-                                    scrolled ? 'border-gray-200 text-gray-700' : 'border-white/20 text-white'
-                                }`}>
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors ${scrolled ? 'border-gray-200 text-gray-700' : 'border-white/20 text-white'
+                                    }`}>
                                     <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
                                         <User size={14} />
                                     </div>
@@ -105,9 +104,8 @@ const Navbar = () => {
                             <>
                                 <Link
                                     to="/login"
-                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                        scrolled ? 'text-gray-700 hover:text-gray-900' : 'text-white/90 hover:text-white'
-                                    }`}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${scrolled ? 'text-gray-700 hover:text-gray-900' : 'text-white/90 hover:text-white'
+                                        }`}
                                 >
                                     Sign In
                                 </Link>

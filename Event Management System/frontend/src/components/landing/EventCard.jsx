@@ -59,9 +59,9 @@ const EventCard = ({ event }) => {
                     </div>
                 </div>
 
-                {/* Action Link */}
+                {/* Action Link — /events/:id par le jaata hai EventDetailPage ke liye */}
                 <Link
-                    to="/register"
+                    to={`/events/${event.id}`}
                     className="w-full mt-2 py-2.5 px-4 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-sm font-semibold text-center transition-all duration-200 flex items-center justify-center gap-1.5 group/btn"
                 >
                     <span>View Details</span>
