@@ -20,7 +20,17 @@ const CompaniesPage = () => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     // Create Company Modal states
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [formData, setFormData] = useState({ name: '', email: '', phone: '', description: '', address: '' });
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        description: '',
+        address: '',
+        website: '',
+        tagline: '',
+        logo: '',
+        banner: ''
+    });
     const [creating, setCreating] = useState(false);
 
     // Edit Company states — drawer ke andar inline edit ke liye
@@ -48,7 +58,17 @@ const CompaniesPage = () => {
 
             // Success ke baad:
             setShowCreateModal(false);                   // modal band karo
-            setFormData({ name: '', email: '', phone: '', description: '', address: '' }); // form reset
+            setFormData({
+                name: '',
+                email: '',
+                phone: '',
+                description: '',
+                address: '',
+                website: '',
+                tagline: '',
+                logo: '',
+                banner: ''
+            }); // form reset
             fetchCompanies(search, 1, limit);            // list refresh karo — page 1 pe wapis
         } catch (err) {
             console.error('Failed to create company:', err);
@@ -384,9 +404,13 @@ const CompaniesPage = () => {
                                 <form onSubmit={handleUpdate} className="space-y-3">
                                     {[  // DRY: array se fields render karo — ek jagah list, ek jagah JSX
                                         { label: 'Company Name *', key: 'name', type: 'text', required: true },
+                                        { label: 'Tagline', key: 'tagline', type: 'text', required: false },
+                                        { label: 'Website', key: 'website', type: 'url', required: false },
                                         { label: 'Email', key: 'email', type: 'email', required: false },
                                         { label: 'Phone', key: 'phone', type: 'text', required: false },
                                         { label: 'Address', key: 'address', type: 'text', required: false },
+                                        { label: 'Logo Image URL', key: 'logo', type: 'url', required: false },
+                                        { label: 'Banner Image URL', key: 'banner', type: 'url', required: false },
                                     ].map(({ label, key, type, required }) => (
                                         <div key={key}>
                                             <label className="text-[10px] font-semibold text-gray-400 uppercase mb-0.5 block">{label}</label>
@@ -421,10 +445,31 @@ const CompaniesPage = () => {
                                 // ── VIEW MODE (read-only rows) ──
                                 <div className="space-y-2 text-sm">
                                     <div className="py-1.5 border-b border-gray-50">
+                                        <span className="text-gray-500 block mb-1">Tagline</span>
+                                        <p className="text-gray-800 font-medium text-xs leading-relaxed">
+                                            {selectedCompany.tagline || '—'}
+                                        </p>
+                                    </div>
+                                    <div className="py-1.5 border-b border-gray-50">
                                         <span className="text-gray-500 block mb-1">Description</span>
                                         <p className="text-gray-800 font-medium text-xs leading-relaxed">
                                             {selectedCompany.description || '—'}
                                         </p>
+                                    </div>
+                                    <div className="flex justify-between py-1.5 border-b border-gray-50">
+                                        <span className="text-gray-500">Website</span>
+                                        <span className="font-medium text-gray-800">
+                                            {selectedCompany.website ? (
+                                                <a
+                                                    href={selectedCompany.website.startsWith('http') ? selectedCompany.website : `https://${selectedCompany.website}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 hover:underline"
+                                                >
+                                                    {selectedCompany.website}
+                                                </a>
+                                            ) : '—'}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between py-1.5 border-b border-gray-50">
                                         <span className="text-gray-500">Phone</span>
@@ -433,6 +478,22 @@ const CompaniesPage = () => {
                                     <div className="flex justify-between py-1.5 border-b border-gray-50">
                                         <span className="text-gray-500">Address</span>
                                         <span className="font-medium text-gray-800 text-right max-w-[60%]">{selectedCompany.address || '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-1.5 border-b border-gray-50">
+                                        <span className="text-gray-500">Logo</span>
+                                        {selectedCompany.logo ? (
+                                            <img src={selectedCompany.logo} alt="Logo" className="w-8 h-8 rounded object-cover border border-gray-200" />
+                                        ) : (
+                                            <span className="text-gray-400 text-xs">—</span>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-between items-center py-1.5 border-b border-gray-50">
+                                        <span className="text-gray-500">Banner</span>
+                                        {selectedCompany.banner ? (
+                                            <img src={selectedCompany.banner} alt="Banner" className="w-16 h-8 rounded object-cover border border-gray-200" />
+                                        ) : (
+                                            <span className="text-gray-400 text-xs">—</span>
+                                        )}
                                     </div>
 
                                     <div className="flex justify-between py-1.5 border-b border-gray-50">
@@ -573,10 +634,10 @@ const CompaniesPage = () => {
             {/* Create Company Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
 
                         {/* Modal Header */}
-                        <div className="flex justify-between items-center mb-5">
+                        <div className="flex justify-between items-center mb-5 sticky top-0 bg-white pb-2 border-b border-gray-100 z-10">
                             <h2 className="text-lg font-bold text-gray-900">Create New Company</h2>
                             <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                         </div>
@@ -597,28 +658,52 @@ const CompaniesPage = () => {
                                 />
                             </div>
 
-                            {/* Email */}
+                            {/* Tagline */}
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Email</label>
+                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Tagline</label>
                                 <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                                    placeholder="company@email.com"
+                                    type="text"
+                                    value={formData.tagline}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
+                                    placeholder="e.g. Creating unforgettable live experiences"
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
 
-                            {/* Phone */}
+                            {/* Website */}
                             <div>
-                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Phone</label>
+                                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Website</label>
                                 <input
-                                    type="text"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                    placeholder="+92 300 1234567"
+                                    type="url"
+                                    value={formData.website}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                                    placeholder="https://yourcompany.com"
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                                 />
+                            </div>
+
+                            {/* Email & Phone */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Email</label>
+                                    <input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                        placeholder="company@email.com"
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Phone</label>
+                                    <input
+                                        type="text"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                        placeholder="+92 300 1234567"
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
                             </div>
 
                             {/* Description */}
@@ -633,7 +718,7 @@ const CompaniesPage = () => {
                                 />
                             </div>
 
-                            {/* Address — Create modal mein missing tha, ab add kiya */}
+                            {/* Address */}
                             <div>
                                 <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Address</label>
                                 <input
@@ -643,6 +728,30 @@ const CompaniesPage = () => {
                                     placeholder="Enter Company Address"
                                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                                 />
+                            </div>
+
+                            {/* Logo & Banner URLs */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Logo Image URL</label>
+                                    <input
+                                        type="url"
+                                        value={formData.logo}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, logo: e.target.value }))}
+                                        placeholder="https://images.unsplash.com/..."
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Banner Image URL</label>
+                                    <input
+                                        type="url"
+                                        value={formData.banner}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, banner: e.target.value }))}
+                                        placeholder="https://images.unsplash.com/..."
+                                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
                             </div>
 
                             {/* Buttons */}

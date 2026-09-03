@@ -9,6 +9,7 @@ const companyRoutes = require('./routes/companyRoutes');
 const userRoutes = require('./routes/userRoutes');
 const organizerRoutes = require('./routes/organizerRoutes');
 const eventRoutes = require('./routes/eventRoutes');
+const registrationRoutes = require('./routes/registrationRoutes');
 
 
 
@@ -41,6 +42,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/organizer', organizerRoutes);
 
 app.use('/api/events', eventRoutes);
+
+// Event Registration routes — PARTICIPANT ke liye
+app.use('/api/registrations', registrationRoutes);
 
 // Root health check
 app.get('/', (req, res) => {

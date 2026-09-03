@@ -65,7 +65,11 @@ const OrganizerCompanyPage = () => {
         description: '',
         email: '',
         phone: '',
-        address: ''
+        address: '',
+        website: '',
+        tagline: '',
+        logo: '',
+        banner: ''
     });
 
     const handleLogout = async () => {
@@ -94,7 +98,11 @@ const OrganizerCompanyPage = () => {
                     description: res.data.data.description || '',
                     email: res.data.data.email || '',
                     phone: res.data.data.phone || '',
-                    address: res.data.data.address || ''
+                    address: res.data.data.address || '',
+                    website: res.data.data.website || '',
+                    tagline: res.data.data.tagline || '',
+                    logo: res.data.data.logo || '',
+                    banner: res.data.data.banner || ''
                 });
             }
         } catch (err) {
@@ -145,7 +153,11 @@ const OrganizerCompanyPage = () => {
             description: company?.description || '',
             email: company?.email || '',
             phone: company?.phone || '',
-            address: company?.address || ''
+            address: company?.address || '',
+            website: company?.website || '',
+            tagline: company?.tagline || '',
+            logo: company?.logo || '',
+            banner: company?.banner || ''
         });
         setIsEditing(false);
         setSaveError('');
@@ -153,9 +165,9 @@ const OrganizerCompanyPage = () => {
     };
 
     // ── Reusable Form Field (DRY) ─────────────────────────────────
-    // Edit form mein 5 fields hain — same layout, sirf label/name/type alag.
+    // Edit form mein fields hain — same layout, sirf label/name/type alag.
     // Ek component se sab handle karo. isTextarea prop se textarea ya input choose karo.
-    const FormField = ({ label, name, type = 'text', isTextarea = false }) => (
+    const FormField = ({ label, name, type = 'text', isTextarea = false, placeholder = '' }) => (
         <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
                 {label}
@@ -167,7 +179,7 @@ const OrganizerCompanyPage = () => {
                     onChange={handleInputChange}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    placeholder={`Enter ${label.toLowerCase()}...`}
+                    placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
                 />
             ) : (
                 <input
@@ -176,7 +188,7 @@ const OrganizerCompanyPage = () => {
                     value={formData[name]}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={`Enter ${label.toLowerCase()}...`}
+                    placeholder={placeholder || `Enter ${label.toLowerCase()}...`}
                 />
             )}
         </div>
@@ -252,10 +264,42 @@ const OrganizerCompanyPage = () => {
                             {!isEditing && company && (
                                 <div className="space-y-1">
                                     <InfoRow label="Company Name" value={company.name} />
+                                    <InfoRow label="Tagline" value={company.tagline} />
                                     <InfoRow label="Description" value={company.description} />
                                     <InfoRow label="Email" value={company.email} />
                                     <InfoRow label="Phone" value={company.phone} />
                                     <InfoRow label="Address" value={company.address} />
+                                    <div className="flex justify-between items-start py-2.5 border-b border-gray-50">
+                                        <span className="text-sm text-gray-500 font-medium min-w-[120px]">Website</span>
+                                        <span className="text-sm text-gray-800 text-right">
+                                            {company.website ? (
+                                                <a
+                                                    href={company.website.startsWith('http') ? company.website : `https://${company.website}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-blue-600 hover:underline"
+                                                >
+                                                    {company.website}
+                                                </a>
+                                            ) : '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center py-2.5 border-b border-gray-50">
+                                        <span className="text-sm text-gray-500 font-medium">Logo</span>
+                                        {company.logo ? (
+                                            <img src={company.logo} alt="Company Logo" className="w-10 h-10 rounded-lg object-cover border border-gray-200" />
+                                        ) : (
+                                            <span className="text-sm text-gray-400">—</span>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-between items-center py-2.5 border-b border-gray-50">
+                                        <span className="text-sm text-gray-500 font-medium">Banner</span>
+                                        {company.banner ? (
+                                            <img src={company.banner} alt="Company Banner" className="w-24 h-10 rounded-lg object-cover border border-gray-200" />
+                                        ) : (
+                                            <span className="text-sm text-gray-400">—</span>
+                                        )}
+                                    </div>
                                     <div className="flex justify-between items-center py-2.5">
                                         <span className="text-sm text-gray-500 font-medium">Status</span>
                                         <StatusBadge status={company.status} />
@@ -267,10 +311,18 @@ const OrganizerCompanyPage = () => {
                             {isEditing && (
                                 <div className="space-y-4">
                                     <FormField label="Company Name" name="name" />
+                                    <FormField label="Tagline" name="tagline" placeholder="e.g. Creating unforgettable live experiences" />
+                                    <FormField label="Website" name="website" type="url" placeholder="https://yourcompany.com" />
                                     <FormField label="Description" name="description" isTextarea={true} />
-                                    <FormField label="Email" name="email" type="email" />
-                                    <FormField label="Phone" name="phone" type="tel" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField label="Email" name="email" type="email" />
+                                        <FormField label="Phone" name="phone" type="tel" />
+                                    </div>
                                     <FormField label="Address" name="address" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField label="Logo Image URL" name="logo" placeholder="https://images.unsplash.com/..." />
+                                        <FormField label="Banner Image URL" name="banner" placeholder="https://images.unsplash.com/..." />
+                                    </div>
                                     {/* Status — read only, sirf PM change karta hai */}
                                     <div>
                                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">

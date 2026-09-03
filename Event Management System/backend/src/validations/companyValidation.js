@@ -11,6 +11,10 @@ const companySchema = z.object({
     email: z.string().email('Invalid email format').optional().nullable().or(z.literal('')),
     phone: z.string().optional().nullable(),
     address: z.string().optional().nullable(),
+    website: z.string().optional().nullable().or(z.literal('')),
+    logo: z.string().optional().nullable().or(z.literal('')),
+    banner: z.string().optional().nullable().or(z.literal('')),
+    tagline: z.string().optional().nullable().or(z.literal('')),
 });
 
 // ─────────────────────────────────────────────────────────────────

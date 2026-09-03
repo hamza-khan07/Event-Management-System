@@ -5,7 +5,7 @@
 // Conditional Links: User Profile & Logout (if logged in) OR Sign In & Get Started (if logged out)
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Calendar, Menu, X, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../Context/AuthContext';
 
@@ -19,6 +19,7 @@ const NAV_LINKS = [
 const Navbar = () => {
     const { isAuthenticated, user, logout } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
@@ -28,16 +29,39 @@ const Navbar = () => {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    const scrollTo = (href) => {
-        setMenuOpen(false);
-        if (!href.startsWith('#')) return;
-
+    // Scroll helper
+    const scrollToSection = (href) => {
+        if (href === '#home') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
         const el = document.querySelector(href);
         if (el) {
             const top = el.getBoundingClientRect().top + window.scrollY - 70;
             window.scrollTo({ top, behavior: 'smooth' });
         }
     };
+
+    // Agar doosre page (AllEventsPage/EventDetail) se navigate ho kar aaye hain to target section par scroll karein
+    useEffect(() => {
+        if (location.pathname === '/' && location.state?.scrollTo) {
+            const target = location.state.scrollTo;
+            window.history.replaceState({}, document.title);
+            setTimeout(() => scrollToSection(target), 100);
+        }
+    }, [location]);
+
+    const handleNavClick = (href) => {
+        setMenuOpen(false);
+
+        if (location.pathname === '/') {
+            scrollToSection(href);
+        } else {
+            // Doosre page se pehle '/' par jayein aur target section sath pass karein
+            navigate('/', { state: { scrollTo: href } });
+        }
+    };
+
 
     const handleLogout = () => {
         if (logout) logout();
@@ -70,7 +94,7 @@ const Navbar = () => {
                         {NAV_LINKS.map((link) => (
                             <li key={link.label}>
                                 <button
-                                    onClick={() => scrollTo(link.href)}
+                                    onClick={() => handleNavClick(link.href)}
                                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${navText} ${navHover}`}
                                 >
                                     {link.label}
@@ -136,7 +160,7 @@ const Navbar = () => {
                     {NAV_LINKS.map((link) => (
                         <button
                             key={link.label}
-                            onClick={() => scrollTo(link.href)}
+                            onClick={() => handleNavClick(link.href)}
                             className="block w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
                         >
                             {link.label}

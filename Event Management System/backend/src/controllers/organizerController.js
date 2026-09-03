@@ -42,7 +42,7 @@ const getMyCompany = async (req, res, next) => {
 
         // Company ki info fetch karo
         const [companies] = await db.query(
-            'SELECT id, name, description, email, phone, address, status, created_at FROM companies WHERE id = ?',
+            'SELECT id, name, description, email, phone, website, address, logo, banner, tagline, status, created_at FROM companies WHERE id = ?',
             [company_id]
         );
 
@@ -83,7 +83,7 @@ const getMyCompany = async (req, res, next) => {
 // URL mein koi ID nahi hai — Organizer sirf apni company update kare.
 // JWT ke company_id se directly update karte hain — safe!
 //
-// Kya update ho sakta hai? — name, description, email, phone, address
+// Kya update ho sakta hai? — name, description, email, phone, website, address, logo, banner, tagline
 // Kya update NAHI ho sakta? — status (sirf PM status change karta hai)
 // ─────────────────────────────────────────────────────────────────
 const updateMyCompany = async (req, res, next) => {
@@ -97,30 +97,30 @@ const updateMyCompany = async (req, res, next) => {
             });
         }
 
-        // Sirf yeh fields update karne ki permission hai organizer ko
-        const { name, description, email, phone, address } = req.body;
-
-        // Manual validation replaced by Zod Validation Middleware
+        const { name, description, email, phone, website, address, logo, banner, tagline } = req.body;
 
         // Update karo — sirf apni company (company_id JWT se aaya, URL se nahi)
-        // Yahi security hai: URL mein koi ID nahi, token se pata chalta hai
         await db.query(
             `UPDATE companies 
-             SET name = ?, description = ?, email = ?, phone = ?, address = ?
+             SET name = ?, description = ?, email = ?, phone = ?, website = ?, address = ?, logo = ?, banner = ?, tagline = ?
              WHERE id = ?`,
             [
                 name.trim(),
                 description || null,
                 email || null,
                 phone || null,
+                website || null,
                 address || null,
+                logo || null,
+                banner || null,
+                tagline || null,
                 company_id
             ]
         );
 
         // Updated company wapis bhejo
         const [updated] = await db.query(
-            'SELECT id, name, description, email, phone, address, status FROM companies WHERE id = ?',
+            'SELECT id, name, description, email, phone, website, address, logo, banner, tagline, status FROM companies WHERE id = ?',
             [company_id]
         );
 

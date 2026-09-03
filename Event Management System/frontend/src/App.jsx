@@ -5,20 +5,20 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './Context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
-import LandingPage           from './pages/LandingPage';
-import LoginPage             from './pages/LoginPage';
-import RegisterPage          from './pages/RegisterPage';
-import DashboardPage         from './pages/DashboardPage';
-import CompaniesPage         from './pages/companiesPage';
-import OrganizersPage        from './pages/OrganizersPage';
-import ParticipantsPage      from './pages/ParticipantsPage';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import CompaniesPage from './pages/companiesPage';
+import OrganizersPage from './pages/OrganizersPage';
+import ParticipantsPage from './pages/ParticipantsPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
-import OrganizerCompanyPage  from './pages/OrganizerCompanyPage';
-import MyEventsPage          from './pages/MyEventsPage';
-import CreateEventPage       from './pages/CreateEventPage';
-import EditEventPage         from './pages/EditEventPage';
-import AllEventsPage         from './pages/AllEventsPage'; // /events — public dedicated page
-import EventDetailPage       from './pages/EventDetailPage'; // /events/:id — single event detail
+import OrganizerCompanyPage from './pages/OrganizerCompanyPage';
+import MyEventsPage from './pages/MyEventsPage';
+import CreateEventPage from './pages/CreateEventPage';
+import EditEventPage from './pages/EditEventPage';
+import AllEventsPage from './pages/AllEventsPage'; // /events — public dedicated page
+import EventDetailPage from './pages/EventDetailPage'; // /events/:id — single event detail
 
 function App() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -44,10 +44,11 @@ function App() {
       <Route path="/events" element={<AllEventsPage />} />
 
       {/* Public: Single Event Detail page — :id se event dhundhta hai */}
+
       <Route path="/events/:id" element={<EventDetailPage />} />
 
       {/* Auth Routes */}
-      <Route path="/login"    element={<LoginPage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
       {/* Protected: Generic dashboard */}

@@ -4,7 +4,7 @@
 
 // Structure: Navbar -> Hero -> Featured Events -> How It Works -> Contact -> Footer
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom'; // /events page par navigate karne ke liye
 import {
     Search,
@@ -21,69 +21,10 @@ import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 import EventCard from '../components/landing/EventCard';
 import ContactSection from '../components/landing/ContactSection';
+import { getPublicEvents } from '../services/eventService';
 
-const FEATURED_EVENTS = [
-    {
-        id: '1',
-        title: 'The Grand Music Festival 2024',
-        date: 'Oct 26, 2024',
-        time: '7:00 PM',
-        location: 'Alhamra Arts Council, Lahore',
-        category: 'Concert & Music',
-        price: 'PKR 2,500',
-        image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-        id: '2',
-        title: 'Tech Innovators Conference',
-        date: 'Oct 28, 2024',
-        time: '9:00 AM',
-        location: 'Expo Centre, Lahore',
-        category: 'Technology',
-        price: 'Free',
-        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-        id: '3',
-        title: 'Foodies Carnival Lahore',
-        date: 'Nov 02, 2024',
-        time: '12:00 PM',
-        location: 'Gulberg Galleria, Lahore',
-        category: 'Food & Drinks',
-        price: 'PKR 800',
-        image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-        id: '4',
-        title: 'Contemporary Art Workshop',
-        date: 'Nov 05, 2024',
-        time: '3:00 PM',
-        location: 'Shakir Ali Museum, Lahore',
-        category: 'Art & Culture',
-        price: 'PKR 1,200',
-        image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-        id: '5',
-        title: 'Outdoor Movie & Stargazing Night',
-        date: 'Nov 10, 2024',
-        time: '6:30 PM',
-        location: 'Model Town Park, Lahore',
-        category: 'Entertainment',
-        price: 'PKR 1,500',
-        image: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=800&q=80',
-    },
-    {
-        id: '6',
-        title: 'Startup Pitch Weekend',
-        date: 'Nov 15, 2024',
-        time: '10:00 AM',
-        location: 'NIC Lahore, LUMS',
-        category: 'Business & Networking',
-        price: 'Free',
-        image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=800&q=80',
-    },
-];
+
+
 
 const CATEGORY_TABS = ['All Events', 'Music', 'Technology', 'Food', 'Art & Culture', 'Business'];
 
@@ -115,30 +56,43 @@ const HOW_IT_WORKS = [
 ];
 
 const LandingPage = () => {
-    const navigate = useNavigate(); // page navigation ke liye
+    const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeTab, setActiveTab] = useState('All Events');
+    const [activeTab, setActiveTab]     = useState('All Events');
+
+    // API se featured events — sirf PUBLISHED events aati hain (limit=6)
+    const [featuredEvents, setFeaturedEvents] = useState([]);
+
+    useEffect(() => {
+        const fetchFeatured = async () => {
+            try {
+                const data = await getPublicEvents({ limit: 6 });
+                setFeaturedEvents(data.data || []);
+            } catch {
+                // Featured events load nahi huin — silently fail (non-critical)
+                setFeaturedEvents([]);
+            }
+        };
+        fetchFeatured();
+    }, []);
 
     const handleSearch = (e) => {
         e.preventDefault();
-        const el = document.querySelector('#events');
-        if (el) {
-            const top = el.getBoundingClientRect().top + window.scrollY - 70;
-            window.scrollTo({ top, behavior: 'smooth' });
-        }
+        navigate('/events');
     };
 
-    const filteredEvents = FEATURED_EVENTS.filter((ev) => {
+    // Client-side filter on fetched API data (tab + search)
+    const filteredEvents = featuredEvents.filter((ev) => {
         const q = searchQuery.toLowerCase().trim();
         const matchesQuery =
             !q ||
             ev.title.toLowerCase().includes(q) ||
-            ev.location.toLowerCase().includes(q) ||
-            ev.category.toLowerCase().includes(q);
+            ev.venue?.toLowerCase().includes(q) ||
+            ev.category?.toLowerCase().includes(q);
 
         const matchesTab =
             activeTab === 'All Events' ||
-            ev.category.toLowerCase().includes(activeTab.toLowerCase());
+            ev.category?.toLowerCase().includes(activeTab.toLowerCase());
 
         return matchesQuery && matchesTab;
     });
@@ -149,7 +103,7 @@ const LandingPage = () => {
 
             {/* ---- 1. HERO SECTION ---- */}
             <section
-                id="discover"
+                id="home"
                 className="relative min-h-[500px] lg:min-h-[550px] flex items-center justify-center overflow-hidden"
             >
                 {/* Background Hero Image */}
@@ -282,7 +236,6 @@ const LandingPage = () => {
                             className="inline-flex items-center gap-2 px-8 py-3.5 bg-gray-900 hover:bg-indigo-700 text-white text-sm font-bold rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer group"
                         >
                             <span>Explore All Events</span>
-                            {/* Arrow icon hover par right mein thoda move karta hai */}
                             <ArrowRight
                                 size={17}
                                 className="transition-transform duration-200 group-hover:translate-x-1"

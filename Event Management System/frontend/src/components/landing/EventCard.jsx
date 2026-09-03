@@ -7,15 +7,23 @@ import { Calendar, MapPin, Tag, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const EventCard = ({ event }) => {
-    const {
-        title,
-        date,
-        time,
-        location,
-        category,
-        image,
-        price = 'Free',
-    } = event;
+    const title = event.title;
+    const category = event.category || 'Event';
+    const price = event.price || 'Free';
+    const location = event.venue || event.location || 'Location TBA';
+    const image = event.image_url || event.image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
+
+    // Format date gracefully
+    const rawDate = event.event_date || event.date;
+    const date = rawDate
+        ? new Date(rawDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+        : '';
+
+    // Format time gracefully
+    const rawTime = event.start_time || event.time;
+    const time = rawTime && rawTime.includes(':') && !rawTime.includes('M')
+        ? new Date(`1970-01-01T${rawTime}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : rawTime || '';
 
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden flex flex-col group">

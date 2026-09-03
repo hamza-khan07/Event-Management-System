@@ -23,7 +23,9 @@ const createEvent = async (req, res, next) => {
             start_time,
             end_time,
             capacity,
-            status
+            status,
+            price,        // ticket ki qeemat — "Free" ya "PKR 2,500"
+            image_url     // event banner image URL
         } = req.body;
 
         const company_id = req.user.company_id;
@@ -54,8 +56,8 @@ const createEvent = async (req, res, next) => {
         // ── DB Insert ──
         const [result] = await db.query(
             `INSERT INTO events 
-                (company_id, title, description, category, venue, event_date, start_time, end_time, capacity, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (company_id, title, description, category, venue, event_date, start_time, end_time, capacity, status, price, image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 company_id,
                 title.trim(),
@@ -66,7 +68,9 @@ const createEvent = async (req, res, next) => {
                 start_time,
                 end_time,
                 capacity,
-                eventStatus
+                eventStatus,
+                price || null,
+                image_url || null
             ]
         );
 
@@ -223,7 +227,7 @@ const updateEvent = async (req, res, next) => {
         const { id } = req.params;
         const company_id = req.user.company_id;
 
-        const { title, description, category, venue, event_date, start_time, end_time, capacity } = req.body;
+        const { title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url } = req.body;
         // 1. Ownership Check (Kyun? Taake koi bhi ID badal kar kisi aur ka event hack na kar lay)
         const [events] = await db.query(
             'SELECT id, company_id FROM events WHERE id = ?',
@@ -249,9 +253,11 @@ const updateEvent = async (req, res, next) => {
                  event_date = COALESCE(?, event_date),
                  start_time = COALESCE(?, start_time),
                  end_time = COALESCE(?, end_time),
-                 capacity = COALESCE(?, capacity)
+                 capacity = COALESCE(?, capacity),
+                 price = COALESCE(?, price),
+                 image_url = COALESCE(?, image_url)
              WHERE id = ?`,
-            [title, description, category, venue, event_date, start_time, end_time, capacity, id]
+            [title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url, id]
         );
         res.status(200).json({ success: true, message: 'Event updated successfully.' });
     } catch (error) {
@@ -294,5 +300,122 @@ const deleteEvent = async (req, res, next) => {
     }
 };
 
-module.exports = { createEvent, getMyEvents, updateEventStatus, updateEvent, deleteEvent };
 
+// ─────────────────────────────────────────────────────────────────
+// 6. GET PUBLIC EVENTS (Sab published events — login zaroorat nahi)
+//    Route: GET /api/events/public?search=&category=&page=1&limit=9
+//    Access: Public
+//
+// Kyun alag function? getMyEvents sirf ek organizer ki events deta tha
+// aur ORGANIZER role chahiye tha. Public pages ko sab companies ki
+// PUBLISHED events chahiye hoti hain bina kisi auth ke.
+// ─────────────────────────────────────────────────────────────────
+const getPublicEvents = async (req, res, next) => {
+    try {
+        const { search = '', category = '', page = 1, limit = 9 } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const offset = (pageNum - 1) * limitNum;
+
+        // Base filter: sirf PUBLISHED events public ko dikhao
+        let baseWhere = "WHERE e.status = 'PUBLISHED'";
+        const params = [];
+
+        // Search filter — title, venue, ya description mein
+        if (search) {
+            baseWhere += ' AND (e.title LIKE ? OR e.venue LIKE ? OR e.description LIKE ?)';
+            params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        // Category filter — exact match
+        if (category) {
+            baseWhere += ' AND e.category = ?';
+            params.push(category);
+        }
+
+        const dataQuery = `
+            SELECT
+                e.id, e.title, e.description, e.category,
+                e.venue, e.event_date, e.start_time, e.end_time,
+                e.capacity, e.price, e.image_url, e.status,
+                c.name as organizer_name,
+                c.logo as organizer_logo,
+                c.banner as organizer_banner,
+                c.tagline as organizer_tagline,
+                c.website as organizer_website
+            FROM events e
+            JOIN companies c ON c.id = e.company_id
+            ${baseWhere}
+            ORDER BY e.event_date ASC
+            LIMIT ? OFFSET ?
+        `;
+
+        const countQuery = `SELECT COUNT(*) as total FROM events e ${baseWhere}`;
+
+        const [events] = await db.query(dataQuery, [...params, limitNum, offset]);
+        const [countRows] = await db.query(countQuery, params);
+
+        res.status(200).json({
+            success: true,
+            data: events,
+            pagination: {
+                total: countRows[0].total,
+                totalPages: Math.ceil(countRows[0].total / limitNum),
+                currentPage: pageNum,
+                limit: limitNum
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+// ─────────────────────────────────────────────────────────────────
+// 7. GET SINGLE PUBLIC EVENT BY ID
+//    Route: GET /api/events/public/:id
+//    Access: Public
+//
+// EventDetailPage ke liye — ek specific event ka poora detail
+// ─────────────────────────────────────────────────────────────────
+const getPublicEventById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        const [events] = await db.query(
+            `SELECT
+                e.id, e.title, e.description, e.category,
+                e.venue, e.event_date, e.start_time, e.end_time,
+                e.capacity, e.price, e.image_url, e.status,
+                c.name as organizer_name,
+                c.id   as organizer_id,
+                c.logo as organizer_logo,
+                c.banner as organizer_banner,
+                c.tagline as organizer_tagline,
+                c.website as organizer_website
+             FROM events e
+             JOIN companies c ON c.id = e.company_id
+             WHERE e.id = ? AND e.status = 'PUBLISHED'`,
+            [id]
+        );
+
+        if (events.length === 0) {
+            return res.status(404).json({ success: false, message: 'Event not found.' });
+        }
+
+        res.status(200).json({ success: true, data: events[0] });
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+module.exports = {
+    createEvent,
+    getMyEvents,
+    updateEventStatus,
+    updateEvent,
+    deleteEvent,
+    getPublicEvents,
+    getPublicEventById
+};

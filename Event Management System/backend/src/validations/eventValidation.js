@@ -37,6 +37,12 @@ const createEventSchema = z.object({
         invalid_type_error: 'Capacity must be a valid number.'
     }).int().min(1, 'Capacity must be at least 1.'),
 
+    // price: "Free", "PKR 2,500" — VARCHAR isliye kyunke "Free" bhi valid value hai
+    price: z.string().optional().nullable(),
+
+    // image_url: event ki banner image — agar URL diya toh valid hona chahiye
+    image_url: z.string().url('Invalid image URL format.').optional().nullable(),
+
     status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT')
 });
 

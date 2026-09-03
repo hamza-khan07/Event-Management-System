@@ -118,18 +118,40 @@ const updateCompanyStatus = async (req, res, next) => {
 // ─────────────────────────────────────────────
 const createCompany = async (req, res, next) => {
     try {
-        const { name, description, email, phone, address } = req.body;
-        // Manual validation replaced by Zod
+        const { name, description, email, phone, address, website, logo, banner, tagline } = req.body;
 
         const [result] = await db.query(
-            'INSERT INTO companies (name, description, email, phone, address, status) VALUES (?, ?, ?, ?, ?, ?)',
-            [name.trim(), description || null, email ? email.trim() : null, phone || null, address || null, 'ACTIVE']
+            'INSERT INTO companies (name, description, email, phone, address, website, logo, banner, tagline, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                name.trim(),
+                description || null,
+                email ? email.trim() : null,
+                phone || null,
+                address || null,
+                website || null,
+                logo || null,
+                banner || null,
+                tagline || null,
+                'ACTIVE'
+            ]
         );
 
         res.status(201).json({
             success: true,
             message: 'Company created successfully',
-            data: { id: result.insertId, name: name.trim(), description: description || null, email: email ? email.trim() : null, phone: phone || null, address: address || null, status: 'ACTIVE' }
+            data: {
+                id: result.insertId,
+                name: name.trim(),
+                description: description || null,
+                email: email ? email.trim() : null,
+                phone: phone || null,
+                address: address || null,
+                website: website || null,
+                logo: logo || null,
+                banner: banner || null,
+                tagline: tagline || null,
+                status: 'ACTIVE'
+            }
         });
     } catch (error) {
         next(error);
@@ -138,21 +160,30 @@ const createCompany = async (req, res, next) => {
 
 
 // ─────────────────────────────────────────────
-// 5. UPDATE COMPANY INFO (name, email, phone, description, address)
+// 5. UPDATE COMPANY INFO (name, email, phone, description, address, website, logo, banner, tagline)
 // ─────────────────────────────────────────────
 // Kyun: PM company ki info galat ho ya update karni ho to
 // woh drawer se seedha edit kar sake — bina delete/recreate ke.
 const updateCompany = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { name, description, email, phone, address } = req.body;
-
-        // Manual validation replaced by Zod
+        const { name, description, email, phone, address, website, logo, banner, tagline } = req.body;
 
         // UPDATE query — sirf info fields update hongi, status touch nahi hoga
         await db.query(
-            'UPDATE companies SET name=?, description=?, email=?, phone=?, address=?, updated_at=NOW() WHERE id=?',
-            [name.trim(), description || null, email ? email.trim() : null, phone || null, address || null, id]
+            'UPDATE companies SET name=?, description=?, email=?, phone=?, address=?, website=?, logo=?, banner=?, tagline=?, updated_at=NOW() WHERE id=?',
+            [
+                name.trim(),
+                description || null,
+                email ? email.trim() : null,
+                phone || null,
+                address || null,
+                website || null,
+                logo || null,
+                banner || null,
+                tagline || null,
+                id
+            ]
         );
 
         res.status(200).json({ success: true, message: 'Company updated successfully' });
