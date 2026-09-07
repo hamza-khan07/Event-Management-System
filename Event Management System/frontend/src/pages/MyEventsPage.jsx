@@ -296,6 +296,7 @@ const MyEventsPage = () => {
                                     <th className="p-4 font-semibold">Category</th>
                                     <th className="p-4 font-semibold">Date</th>
                                     <th className="p-4 font-semibold">Venue</th>
+                                    <th className="p-4 font-semibold">Price</th>
                                     {/* Registrations: "5 / 100" format — filled / capacity */}
                                     <th className="p-4 font-semibold text-center">Registrations</th>
                                     <th className="p-4 font-semibold">Status</th>
@@ -304,7 +305,7 @@ const MyEventsPage = () => {
                             <tbody>
                                 {events.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-10 text-center">
+                                        <td colSpan={7} className="p-10 text-center">
                                             <p className="text-sm text-gray-400 mb-2">No events found.</p>
                                             <button
                                                 onClick={() => navigate('/organizer/events/create')}
@@ -332,6 +333,15 @@ const MyEventsPage = () => {
                                         </td>
                                         <td className="p-4 text-sm text-gray-500 max-w-[150px]">
                                             <span className="block truncate">{event.venue || '—'}</span>
+                                        </td>
+                                        <td className="p-4 text-sm font-medium whitespace-nowrap">
+                                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                                !event.price || event.price.toLowerCase() === 'free'
+                                                    ? 'bg-emerald-50 text-emerald-700'
+                                                    : 'bg-blue-50 text-blue-700'
+                                            }`}>
+                                                {event.price || 'Free'}
+                                            </span>
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className="text-sm font-semibold text-gray-900">
@@ -448,6 +458,7 @@ const MyEventsPage = () => {
                             </h3>
                             <div>
                                 <InfoRow label="Category" value={selectedEvent.category} />
+                                <InfoRow label="Price" value={selectedEvent.price || 'Free'} />
                                 <InfoRow label="Date" value={formatDate(selectedEvent.event_date)} />
                                 <InfoRow label="Start Time" value={formatTime(selectedEvent.start_time)} />
                                 <InfoRow label="End Time" value={formatTime(selectedEvent.end_time)} />

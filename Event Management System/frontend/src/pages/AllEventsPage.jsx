@@ -15,12 +15,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, SlidersHorizontal, X, ChevronDown, Calendar, Loader2 } from 'lucide-react';
 import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
-import EventCard from '../components/landing/EventCard'; // DRY: reuse existing card
+import EventCard from '../components/landing/EventCard';
 import { getPublicEvents } from '../services/eventService';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-// Popular category chips — wireframe mein clearly dikhaye gaye hain
 const POPULAR_CATEGORIES = ['Music', 'Technology', 'Food', 'Art', 'Business', 'Sports'];
 
 // Sidebar filter options
@@ -62,37 +59,7 @@ const AllEventsPage = () => {
     // Mobile sidebar toggle
     const [showFilters, setShowFilters] = useState(false);
 
-    // ── API Data State ──────────────────────────────────────────────────────────
-    const [events, setEvents] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
 
-    // ── Fetch Events from API ───────────────────────────────────────────────────
-    const fetchEvents = useCallback(async () => {
-        setLoading(true);
-        setError('');
-        try {
-            const params = {};
-            if (searchQuery.trim()) params.search = searchQuery.trim();
-            if (selectedCategory !== 'All') params.category = selectedCategory;
-            if (selectedPrice === 'Free') params.price = 'Free';
-            else if (selectedPrice === 'Paid') params.price = 'Paid';
-
-            const data = await getPublicEvents(params);
-            setEvents(data.data || []);
-        } catch {
-            setError('Events load nahi ho sake. Please refresh karein.');
-        } finally {
-            setLoading(false);
-        }
-    }, [searchQuery, selectedCategory, selectedPrice]);
-
-    // Mount par aur jab bhi filters change hon, events dobara fetch karo
-    useEffect(() => {
-        fetchEvents();
-    }, [fetchEvents]);
-
-    // ── Reset All Filters — DRY: ek hi function se sab reset ────────────────
     const resetFilters = () => {
         setSearchQuery('');
         setSelectedCategory('All');
@@ -227,6 +194,7 @@ const AllEventsPage = () => {
                     </div>
                 </div>
 
+
                 {/* Two Column Layout */}
                 <div className="flex gap-8 items-start">
 
@@ -326,6 +294,7 @@ const AllEventsPage = () => {
                             </div>
                         </div>
 
+
                         {hasActiveFilters && (
                             <button
                                 onClick={resetFilters}
@@ -384,8 +353,10 @@ const AllEventsPage = () => {
                 </div>
             </div>
 
+
             {/* Footer — DRY: existing component reuse */}
             <Footer />
+
         </div>
     );
 };

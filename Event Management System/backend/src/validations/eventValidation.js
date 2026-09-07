@@ -56,7 +56,6 @@ const updateEventStatusSchema = z.object({
     })
 });
 
-// File ke aakhir mein export se pehle yeh line add karein:
 // .partial() lagane se saari fields optional ho jati hain (PUT request k liye best hy)
 const updateEventSchema = createEventSchema.partial();
 

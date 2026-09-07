@@ -17,8 +17,9 @@ import OrganizerCompanyPage from './pages/OrganizerCompanyPage';
 import MyEventsPage from './pages/MyEventsPage';
 import CreateEventPage from './pages/CreateEventPage';
 import EditEventPage from './pages/EditEventPage';
-import AllEventsPage from './pages/AllEventsPage'; // /events — public dedicated page
-import EventDetailPage from './pages/EventDetailPage'; // /events/:id — single event detail
+import AllEventsPage from './pages/AllEventsPage';
+import EventDetailPage from './pages/EventDetailPage';
+import PaymentResult from './pages/PaymentResult';
 
 function App() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -128,6 +129,9 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+
+      <Route path="/payment/result" element={<PaymentResult />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

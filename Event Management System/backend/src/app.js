@@ -10,6 +10,8 @@ const userRoutes = require('./routes/userRoutes');
 const organizerRoutes = require('./routes/organizerRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const registrationRoutes = require('./routes/registrationRoutes');
+const paymentRoutes = require("./routes/paymentRoutes");
+
 
 
 
@@ -43,12 +45,10 @@ app.use('/api/organizer', organizerRoutes);
 
 app.use('/api/events', eventRoutes);
 
-// Event Registration routes — PARTICIPANT ke liye
 app.use('/api/registrations', registrationRoutes);
 
-// Root health check
-app.get('/', (req, res) => {
-    res.json({ message: "Event Management API is running" });
-});
+app.use("/api/payments", paymentRoutes);
+
+
 
 module.exports = app;

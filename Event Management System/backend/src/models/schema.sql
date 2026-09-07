@@ -84,3 +84,27 @@ CREATE TABLE attendance (
     marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE RESTRICT
 );
+
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    registration_id INT NOT NULL,
+    transaction_id VARCHAR(100) NOT NULL UNIQUE,
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'PKR',
+    payment_method VARCHAR(50),
+    gateway VARCHAR(50) DEFAULT 'JAZZCASH',
+    status VARCHAR(30) DEFAULT 'PENDING',
+    gateway_response TEXT,
+    paid_at DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Primary key
+    PRIMARY KEY (id),
+    
+    -- Unique constraint: one transaction per registration
+    UNIQUE KEY unique_transaction (registration_id),
+    
+    -- Foreign key
+    FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE CASCADE
+);

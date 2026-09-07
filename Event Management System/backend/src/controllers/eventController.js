@@ -69,7 +69,7 @@ const createEvent = async (req, res, next) => {
                 end_time,
                 capacity,
                 eventStatus,
-                price || null,
+                price ? price.trim() : 'Free',
                 image_url || null
             ]
         );
@@ -132,14 +132,14 @@ const getMyEvents = async (req, res, next) => {
         const dataQuery = `
             SELECT 
                 e.id, e.title, e.description, e.category, e.venue, e.event_date,
-                e.start_time, e.end_time, e.capacity, e.status, e.created_at,
+                e.start_time, e.end_time, e.capacity, e.price, e.image_url, e.status, e.created_at,
                 COUNT(r.id) as registrations
             FROM events e
             LEFT JOIN registrations r ON r.event_id = e.id AND r.status = 'REGISTERED'
             ${baseWhere}
             GROUP BY e.id, e.title, e.description, e.category, e.venue,
                      e.event_date, e.start_time, e.end_time, e.capacity,
-                     e.status, e.created_at
+                     e.price, e.image_url, e.status, e.created_at
             ORDER BY e.created_at DESC
             LIMIT ? OFFSET ?
         `;
@@ -312,7 +312,7 @@ const deleteEvent = async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────
 const getPublicEvents = async (req, res, next) => {
     try {
-        const { search = '', category = '', page = 1, limit = 9 } = req.query;
+        const { search = '', category = '', page = 1, limit = 9, price = '' } = req.query;
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const offset = (pageNum - 1) * limitNum;
@@ -331,6 +331,13 @@ const getPublicEvents = async (req, res, next) => {
         if (category) {
             baseWhere += ' AND e.category = ?';
             params.push(category);
+        }
+
+        // Price filter — Free vs Paid
+        if (price === 'Free') {
+            baseWhere += " AND (e.price IS NULL OR e.price = '' OR LOWER(e.price) = 'free' OR e.price = '0')";
+        } else if (price === 'Paid') {
+            baseWhere += " AND (e.price IS NOT NULL AND e.price != '' AND LOWER(e.price) != 'free' AND e.price != '0')";
         }
 
         const dataQuery = `

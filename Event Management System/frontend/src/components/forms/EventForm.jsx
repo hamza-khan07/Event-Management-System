@@ -41,10 +41,14 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
     const navigate = useNavigate();
     const isEdit = mode === 'edit';
 
+    const [isFree, setIsFree] = useState(true);
+
     const [formData, setFormData] = useState({
         title: '', description: '', category: '', venue: '',
         event_date: '', start_time: '', end_time: '', capacity: '',
-        status: 'DRAFT'
+        status: 'DRAFT',
+        price: 'Free',
+        image_url: ''
     });
 
     const [errors, setErrors] = useState({});
@@ -64,6 +68,10 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             // .substring(0, 5) → "09:00:00" se sirf "09:00" nikalo
             const trimTime = (t) => t ? t.substring(0, 5) : '';
 
+            const rawPrice = eventData.price || 'Free';
+            const isEventFree = !rawPrice || rawPrice.trim().toLowerCase() === 'free' || rawPrice.trim() === '0';
+            setIsFree(isEventFree);
+
             setFormData({
                 title: eventData.title || '',
                 description: eventData.description || '',
@@ -74,6 +82,8 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 end_time: trimTime(eventData.end_time),
                 capacity: eventData.capacity || '',
                 status: eventData.status || 'DRAFT',
+                price: isEventFree ? 'Free' : rawPrice,
+                image_url: eventData.image_url || ''
             });
         }
     }, [isEdit, eventData]);
@@ -101,6 +111,13 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             newErrors.end_time = 'End time must be after start time.';
         if (!formData.capacity || isNaN(parseInt(formData.capacity)) || parseInt(formData.capacity) < 1)
             newErrors.capacity = 'Capacity must be a positive number.';
+
+        if (!isFree) {
+            if (!formData.price || !formData.price.trim() || formData.price.trim().toLowerCase() === 'free') {
+                newErrors.price = 'Ticket price is required for paid events (e.g. PKR 1,500).';
+            }
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -111,12 +128,18 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         if (!validate()) return;
         setSubmitting(true);
 
+        const payload = {
+            ...formData,
+            price: isFree ? 'Free' : formData.price.trim(),
+            image_url: formData.image_url?.trim() || null
+        };
+
         try {
             const res = isEdit
                 // Edit: PUT /api/events/:id
-                ? await axios.put(`http://localhost:5000/api/events/${eventId}`, formData, { withCredentials: true })
+                ? await axios.put(`http://localhost:5000/api/events/${eventId}`, payload, { withCredentials: true })
                 // Create: POST /api/events/create
-                : await axios.post('http://localhost:5000/api/events/create', formData, { withCredentials: true });
+                : await axios.post('http://localhost:5000/api/events/create', payload, { withCredentials: true });
 
             if (res.data.success) {
                 setSuccessMsg(res.data.message);
@@ -153,6 +176,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 </FormField>
                 <FormField label="Description">
                     <textarea name="description" value={formData.description} onChange={handleChange} rows={3}
+                        placeholder="Provide details about the event, agenda, speakers, etc."
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
                 </FormField>
                 <FormField label="Category">
@@ -162,6 +186,86 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                         {EVENT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                     </select>
                 </FormField>
+                <FormField label="Event Banner Image URL">
+                    <input type="url" name="image_url" value={formData.image_url} onChange={handleChange}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                        Optional direct link to an image banner (JPG, PNG, WebP) to display on cards.
+                    </p>
+                </FormField>
+            </SectionCard>
+
+            <SectionCard title="Pricing & Tickets">
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                        Admission Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition ${isFree ? 'border-emerald-500 bg-emerald-50/70 shadow-xs' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
+                            <input
+                                type="radio"
+                                name="pricing_type"
+                                checked={isFree}
+                                onChange={() => {
+                                    setIsFree(true);
+                                    setFormData(prev => ({ ...prev, price: 'Free' }));
+                                    if (errors.price) setErrors(prev => ({ ...prev, price: '' }));
+                                }}
+                                className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <div>
+                                <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Free Event
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Attendees can register and attend at zero cost.
+                                </p>
+                            </div>
+                        </label>
+
+                        <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition ${!isFree ? 'border-blue-500 bg-blue-50/70 shadow-xs' : 'border-gray-200 hover:border-gray-300 bg-white'}`}>
+                            <input
+                                type="radio"
+                                name="pricing_type"
+                                checked={!isFree}
+                                onChange={() => {
+                                    setIsFree(false);
+                                    setFormData(prev => ({ ...prev, price: prev.price === 'Free' ? '' : prev.price }));
+                                }}
+                                className="mt-0.5 text-blue-600 focus:ring-blue-500"
+                            />
+                            <div>
+                                <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                                    Paid Event
+                                </p>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Attendees pay a ticket fee to register.
+                                </p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                {!isFree && (
+                    <FormField label="Ticket Price / Fee" required error={errors.price}>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                name="price"
+                                value={formData.price === 'Free' ? '' : formData.price}
+                                onChange={handleChange}
+                                placeholder="e.g. PKR 2,500 or $25"
+                                className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 ${errors.price ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                            />
+                        </div>
+                        <p className="text-[11px] text-gray-400 mt-1.5">
+                            Tip: Specify price with currency if needed (e.g., "PKR 1,500", "PKR 5,000", or "$30").
+                        </p>
+                    </FormField>
+                )}
             </SectionCard>
 
             <SectionCard title="Date & Time">
