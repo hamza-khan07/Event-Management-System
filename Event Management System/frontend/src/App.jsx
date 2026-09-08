@@ -20,6 +20,7 @@ import EditEventPage from './pages/EditEventPage';
 import AllEventsPage from './pages/AllEventsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import PaymentResult from './pages/PaymentResult';
+import OrganizerParticipantsPage from './pages/OrganizerParticipantsPage';
 
 function App() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -126,6 +127,14 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['ORGANIZER']}>
             <EditEventPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizer/participants"
+        element={
+          <ProtectedRoute allowedRoles={['ORGANIZER']}>
+            <OrganizerParticipantsPage />
           </ProtectedRoute>
         }
       />

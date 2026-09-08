@@ -16,7 +16,10 @@ const DashboardPage = () => {
         totalCompanies: 0,
         totalOrganizers: 0,
         totalParticipants: 0,
-        totalEvents: 0
+        totalEvents: 0,
+        growthData: [],
+        distributionData: [],
+        topOrganizers: []
     });
 
     const [loadingStats, setLoadingStats] = useState(false);
@@ -81,25 +84,23 @@ const DashboardPage = () => {
         await logout();
         navigate('/login');
     };
-    // 2. Apne component function se bahar (ya andar top par) yeh DUMMY DATA rakh dein
-    const growthData = [
-        { name: 'Jan', users: 120, events: 10 },
-        { name: 'Feb', users: 200, events: 25 },
-        { name: 'Mar', users: 150, events: 15 },
-        { name: 'Apr', users: 300, events: 40 },
-        { name: 'May', users: 450, events: 60 },
-        { name: 'Jun', users: 600, events: 85 },
-    ];
-    const distributionData = [
-        { name: 'Tech Conferences', value: 40, color: '#3b82f6' }, // Blue
-        { name: 'Webinars', value: 35, color: '#8b5cf6' },       // Purple
-        { name: 'Sports', value: 25, color: '#10b981' },         // Emerald
-    ];
-    const topOrganizers = [
-        { id: 1, name: 'Tech Innovations', company: 'Google', events: 15, status: 'Active' },
-        { id: 2, name: 'Startup Hub', company: 'Y Combinator', events: 12, status: 'Active' },
-        { id: 3, name: 'Esports Arena', company: 'Riot Games', events: 8, status: 'Pending' },
-    ];
+    // 2. Map dynamic data from backend
+    const growthData = stats.growthData || [];
+    
+    const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'];
+    const totalCategoryEvents = (stats.distributionData || []).reduce((acc, curr) => acc + Number(curr.value || 0), 0);
+    const distributionData = (stats.distributionData || []).map((item, index) => {
+        const count = Number(item.value || 0);
+        const percentage = totalCategoryEvents > 0 ? Math.round((count / totalCategoryEvents) * 100) : 0;
+        return {
+            ...item,
+            value: count,
+            percentage,
+            color: colors[index % colors.length]
+        };
+    });
+    
+    const topOrganizers = stats.topOrganizers || [];
 
     return (
         <div className="h-screen bg-slate-100 flex overflow-hidden">
@@ -177,7 +178,13 @@ const DashboardPage = () => {
                                                     <Cell key={`cell-${index}`} fill={entry.color} />
                                                 ))}
                                             </Pie>
-                                            <RechartsTooltip />
+                                            <RechartsTooltip 
+                                                formatter={(val, name, entry) => [
+                                                    `${val} event${val !== 1 ? 's' : ''} (${entry?.payload?.percentage || 0}%)`,
+                                                    entry?.payload?.name || name
+                                                ]}
+                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                            />
                                         </PieChart>
                                     </ResponsiveContainer>
 
@@ -186,7 +193,7 @@ const DashboardPage = () => {
                                         {distributionData.map((item, index) => (
                                             <div key={index} className="flex items-center gap-1.5">
                                                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
-                                                <span className="text-[11px] text-gray-600 font-medium">{item.name} ({item.value}%)</span>
+                                                <span className="text-[11px] text-gray-600 font-medium">{item.name} ({item.percentage}%)</span>
                                             </div>
                                         ))}
                                     </div>
@@ -219,7 +226,7 @@ const DashboardPage = () => {
                                                 <td className="py-3 text-sm text-gray-600">{org.company}</td>
                                                 <td className="py-3 text-sm text-gray-600 font-medium">{org.events}</td>
                                                 <td className="py-3 text-right">
-                                                    <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full ${org.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+                                                    <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full uppercase ${org.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
                                                         }`}>
                                                         {org.status}
                                                     </span>

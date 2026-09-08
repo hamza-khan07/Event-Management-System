@@ -67,6 +67,9 @@ const Sidebar = ({ user, handleLogout }) => {
                     <Link to="/organizer/events" className={prefixLinkClass('/organizer/events')}>
                         My Events
                     </Link>
+                    <Link to="/organizer/participants" className={linkClass('/organizer/participants')}>
+                        My Participants
+                    </Link>
                 </>
             )}
             

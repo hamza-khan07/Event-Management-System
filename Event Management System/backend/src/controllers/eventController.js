@@ -227,8 +227,9 @@ const updateEvent = async (req, res, next) => {
         const { id } = req.params;
         const company_id = req.user.company_id;
 
-        const { title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url } = req.body;
-        // 1. Ownership Check (Kyun? Taake koi bhi ID badal kar kisi aur ka event hack na kar lay)
+        const { title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url, status } = req.body;
+
+        // 1. Ownership Check
         const [events] = await db.query(
             'SELECT id, company_id FROM events WHERE id = ?',
             [id]
@@ -239,11 +240,17 @@ const updateEvent = async (req, res, next) => {
         if (events[0].company_id !== company_id) {
             return res.status(403).json({ success: false, message: 'You can only edit your own events.' });
         }
-        // 2. End time check (Zod partial mein directly check nahi ho pata is liye yahan kar diya)
+
+        // 2. End time check
         if (start_time && end_time && end_time <= start_time) {
             return res.status(400).json({ success: false, message: 'End time must be after start time.' });
         }
-        // 3. Update Query (COALESCE use kiya hai taake jo field empty aaye, purani wali value mehfooz rahay)
+
+        // 3. Validate status — edit form can only set DRAFT or PUBLISHED (not CANCELLED)
+        const allowedStatuses = ['DRAFT', 'PUBLISHED'];
+        const newStatus = status && allowedStatuses.includes(status) ? status : null;
+
+        // 4. Update Query — status column bhi update karo agar valid aaya
         await db.query(
             `UPDATE events 
              SET title = COALESCE(?, title),
@@ -255,11 +262,19 @@ const updateEvent = async (req, res, next) => {
                  end_time = COALESCE(?, end_time),
                  capacity = COALESCE(?, capacity),
                  price = COALESCE(?, price),
-                 image_url = COALESCE(?, image_url)
+                 image_url = COALESCE(?, image_url),
+                 status = COALESCE(?, status)
              WHERE id = ?`,
-            [title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url, id]
+            [title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url, newStatus, id]
         );
-        res.status(200).json({ success: true, message: 'Event updated successfully.' });
+
+        const statusMsg = newStatus === 'PUBLISHED'
+            ? 'Event updated and published successfully.'
+            : newStatus === 'DRAFT'
+                ? 'Event saved as draft successfully.'
+                : 'Event updated successfully.';
+
+        res.status(200).json({ success: true, message: statusMsg });
     } catch (error) {
         next(error);
     }

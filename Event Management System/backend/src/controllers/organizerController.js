@@ -301,4 +301,127 @@ const getOrganizerOverviewStats = async (req, res, next) => {
 
 
 
-module.exports = { getMyCompany, updateMyCompany, getOrganizerOverviewStats };
+// ─────────────────────────────────────────────────────────────────
+// 5. GET MY PARTICIPANTS
+//    Route: GET /api/organizer/my-participants
+//
+// Kyun: Organizer dekhna chahta hai k kaunse users ne us company ke
+// events mein register kiya hua hai.
+//
+// Query Params:
+//   search  → participant name ya email se filter
+//   eventId → specific event ke participants (optional)
+//   status  → REGISTERED ya CANCELLED ya '' (sab)
+//   page, limit → pagination
+//
+// Security: company_id hamesha JWT se — URL se nahi.
+// Isse organizer sirf apni company ke events ke participants dekhega.
+// ─────────────────────────────────────────────────────────────────
+const getMyParticipants = async (req, res, next) => {
+    try {
+        const company_id = req.user.company_id;
+
+        if (!company_id) {
+            return res.status(404).json({
+                success: false,
+                message: 'You are not linked to any company.'
+            });
+        }
+
+        // Query params parse karo
+        const search  = req.query.search  || '';
+        const eventId = req.query.eventId || '';
+        const status  = req.query.status  || '';
+        const pageNum  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limitNum = Math.min(100, parseInt(req.query.limit) || 10);
+        const offset   = (pageNum - 1) * limitNum;
+
+        // ── Dynamic WHERE clause ──────────────────────────────────
+        // Base condition: sirf is company ke events ke participants
+        const conditions = ['e.company_id = ?'];
+        const params     = [company_id];
+
+        // Optional: specific event filter
+        if (eventId) {
+            conditions.push('r.event_id = ?');
+            params.push(parseInt(eventId));
+        }
+
+        // Optional: registration status filter
+        if (status) {
+            conditions.push('r.status = ?');
+            params.push(status);
+        }
+
+        // Optional: search by name or email
+        if (search) {
+            conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
+            params.push(`%${search}%`, `%${search}%`);
+        }
+
+        const whereClause = conditions.join(' AND ');
+
+        // ── Total count (for pagination) ──────────────────────────
+        const [countRows] = await db.query(
+            `SELECT COUNT(*) as total
+             FROM registrations r
+             JOIN users u  ON r.user_id  = u.id
+             JOIN events e ON r.event_id = e.id
+             WHERE ${whereClause}`,
+            params
+        );
+        const total = countRows[0].total;
+
+        // ── Participants data ─────────────────────────────────────
+        const [participants] = await db.query(
+            `SELECT
+                r.id                AS registration_id,
+                r.registration_code,
+                r.ticket_count,
+                r.phone_number,
+                r.status            AS registration_status,
+                r.registered_at,
+                u.id                AS participant_id,
+                u.name              AS participant_name,
+                u.email             AS participant_email,
+                e.id                AS event_id,
+                e.title             AS event_title,
+                e.event_date
+             FROM registrations r
+             JOIN users u  ON r.user_id  = u.id
+             JOIN events e ON r.event_id = e.id
+             WHERE ${whereClause}
+             ORDER BY r.registered_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, limitNum, offset]
+        );
+
+        // ── Events dropdown list (for filter UI) ─────────────────
+        // Organizer ke sabhi events (sab statuses) — filter dropdown ke liye
+        const [eventsList] = await db.query(
+            `SELECT id, title, event_date, status
+             FROM events
+             WHERE company_id = ?
+             ORDER BY event_date DESC`,
+            [company_id]
+        );
+
+        res.status(200).json({
+            success: true,
+            data: participants,
+            events: eventsList,
+            pagination: {
+                total,
+                currentPage:  pageNum,
+                totalPages:   Math.ceil(total / limitNum),
+                limit:        limitNum
+            }
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+module.exports = { getMyCompany, updateMyCompany, getOrganizerOverviewStats, getMyParticipants };

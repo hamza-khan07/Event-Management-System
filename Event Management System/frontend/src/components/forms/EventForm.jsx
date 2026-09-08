@@ -122,23 +122,22 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    // Generic submit with a given status override
+    const submitWithStatus = async (overrideStatus) => {
         setApiError(''); setSuccessMsg('');
         if (!validate()) return;
         setSubmitting(true);
 
         const payload = {
             ...formData,
+            status: overrideStatus ?? formData.status,
             price: isFree ? 'Free' : formData.price.trim(),
             image_url: formData.image_url?.trim() || null
         };
 
         try {
             const res = isEdit
-                // Edit: PUT /api/events/:id
                 ? await axios.put(`http://localhost:5000/api/events/${eventId}`, payload, { withCredentials: true })
-                // Create: POST /api/events/create
                 : await axios.post('http://localhost:5000/api/events/create', payload, { withCredentials: true });
 
             if (res.data.success) {
@@ -150,6 +149,24 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        // Default submit: keep current formData.status
+        submitWithStatus(formData.status);
+    };
+
+    const handleSaveAsDraft = (e) => {
+        e.preventDefault();
+        setFormData(prev => ({ ...prev, status: 'DRAFT' }));
+        submitWithStatus('DRAFT');
+    };
+
+    const handlePublish = (e) => {
+        e.preventDefault();
+        setFormData(prev => ({ ...prev, status: 'PUBLISHED' }));
+        submitWithStatus('PUBLISHED');
     };
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -299,8 +316,8 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 </FormField>
             </SectionCard>
 
-            {/* Status radio — sirf Create mode mein dikhao, Edit mein status
-                drawer se change hota hai (DRAFT → PUBLISHED → CANCELLED flow) */}
+            {/* ── Publishing Section ── */}
+            {/* Create mode: radio buttons to choose DRAFT or PUBLISHED */}
             {!isEdit && (
                 <SectionCard title="Publishing">
                     <div className="flex gap-4 mt-1">
@@ -319,17 +336,68 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 </SectionCard>
             )}
 
+            {/* Edit mode: show current status + allow changing to DRAFT or PUBLISHED */}
+            {isEdit && (
+                <SectionCard title="Publishing Status">
+                    <div className="flex items-center gap-2 mb-3">
+                        <span className="text-xs text-gray-500 font-medium">Current Status:</span>
+                        <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full uppercase ${
+                            formData.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700'
+                            : formData.status === 'CANCELLED' ? 'bg-red-100 text-red-600'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                            {formData.status}
+                        </span>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                        Use the buttons below to save changes as <strong>Draft</strong> or directly <strong>Publish</strong> this event.
+                        {formData.status === 'CANCELLED' && (
+                            <span className="block mt-1 text-amber-600 font-medium">⚠ This event is currently CANCELLED. You can re-save it as Draft or re-publish it.</span>
+                        )}
+                    </p>
+                </SectionCard>
+            )}
+
+            {/* ── Footer Buttons ── */}
             <div className="flex justify-end gap-3 pb-6">
                 <button type="button" onClick={() => navigate('/organizer/events')}
                     className="px-6 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
                     Cancel
                 </button>
-                <button type="submit" disabled={submitting || !!successMsg}
-                    className="px-8 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition disabled:opacity-60">
-                    {submitting
-                        ? (isEdit ? 'Updating...' : 'Creating...')
-                        : (isEdit ? 'Update Event' : 'Create Event')}
-                </button>
+
+                {/* Edit mode: separate Draft + Publish buttons */}
+                {isEdit ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleSaveAsDraft}
+                            disabled={submitting || !!successMsg}
+                            className="px-6 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition disabled:opacity-60"
+                        >
+                            {submitting && formData.status === 'DRAFT' ? 'Saving...' : '💾 Save as Draft'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handlePublish}
+                            disabled={submitting || !!successMsg}
+                            className="px-8 py-2.5 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition disabled:opacity-60"
+                        >
+                            {submitting && formData.status === 'PUBLISHED' ? 'Publishing...' : '↑ Publish Event'}
+                        </button>
+                    </>
+                ) : (
+                    /* Create mode: single button whose label matches selected status radio */
+                    <button type="submit" disabled={submitting || !!successMsg}
+                        className={`px-8 py-2.5 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 ${
+                            formData.status === 'PUBLISHED'
+                                ? 'bg-emerald-600 hover:bg-emerald-700'
+                                : 'bg-blue-600 hover:bg-blue-700'
+                        }`}>
+                        {submitting
+                            ? (formData.status === 'PUBLISHED' ? 'Publishing...' : 'Saving Draft...')
+                            : (formData.status === 'PUBLISHED' ? '↑ Publish Event' : '💾 Save as Draft')}
+                    </button>
+                )}
             </div>
         </form>
     );

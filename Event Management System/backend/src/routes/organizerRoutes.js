@@ -2,7 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { getMyCompany, updateMyCompany, getOrganizerOverviewStats } = require('../controllers/organizerController');
+const { getMyCompany, updateMyCompany, getOrganizerOverviewStats, getMyParticipants } = require('../controllers/organizerController');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const validate = require('../middleware/validateMiddleware');
 const { companySchema } = require('../validations/companyValidation');
@@ -18,9 +18,12 @@ const { companySchema } = require('../validations/companyValidation');
 // GET  /api/organizer/my-profile     → apna profile
 // ─────────────────────────────────────────────────────────────
 
-router.get('/overview-stats', protect, authorizeRoles('ORGANIZER'), getOrganizerOverviewStats);
+router.get('/overview-stats',   protect, authorizeRoles('ORGANIZER'), getOrganizerOverviewStats);
 
-router.get('/my-company', protect, authorizeRoles('ORGANIZER'), getMyCompany);
-router.put('/my-company', protect, authorizeRoles('ORGANIZER'), validate(companySchema, 'body'), updateMyCompany);
+router.get('/my-company',       protect, authorizeRoles('ORGANIZER'), getMyCompany);
+router.put('/my-company',       protect, authorizeRoles('ORGANIZER'), validate(companySchema, 'body'), updateMyCompany);
+
+// GET /api/organizer/my-participants — participants ki list (with filters + pagination)
+router.get('/my-participants',  protect, authorizeRoles('ORGANIZER'), getMyParticipants);
 
 module.exports = router;
