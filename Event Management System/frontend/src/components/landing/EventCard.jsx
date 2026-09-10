@@ -1,12 +1,11 @@
 // frontend/src/components/landing/EventCard.jsx
 //
-// RESPONSIBILITY: Reusable event card component for the Landing Page.
+// RESPONSIBILITY: Reusable event card component for public event displays.
 //
-// UX Changes:
-//   1. Poora card clickable hai — cursor pointer + hover ring effect
-//   2. "View Details" → "Register Now" button (action-oriented CTA)
-//   3. Button click karne par → /events/:id detail page par jaata hai
-//      (EventDetailPage pe user register kar sakta hai → checkout pe redirect hota hai)
+// UX Features:
+//   1. Fully clickable card with pointer cursor, elevation, and ring hover effects.
+//   2. "Register Now" action-oriented CTA button.
+//   3. Seamless navigation to the event detail page (/events/:id).
 
 import React from 'react';
 import { Calendar, MapPin, Tag, Ticket } from 'lucide-react';
@@ -22,7 +21,7 @@ const EventCard = ({ event }) => {
     const image    = event.image_url || event.image ||
         'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
 
-    // Format date gracefully
+    // Format date
     const rawDate = event.event_date || event.date;
     const date = rawDate
         ? new Date(rawDate).toLocaleDateString('en-US', {
@@ -30,7 +29,7 @@ const EventCard = ({ event }) => {
           })
         : '';
 
-    // Format time gracefully (HH:MM:SS → 9:00 AM)
+    // Format time (HH:MM:SS → 9:00 AM)
     const rawTime = event.start_time || event.time;
     const time = rawTime && rawTime.includes(':') && !rawTime.includes('M')
         ? new Date(`1970-01-01T${rawTime}`).toLocaleTimeString('en-US', {
@@ -38,16 +37,11 @@ const EventCard = ({ event }) => {
           })
         : rawTime || '';
 
-    // ─── Yahan sab navigation /events/:id pe hi jaata hai ───────────────────
-    // EventDetailPage pe user event details dekhta hai aur wahan se Register
-    // button click karta hai → backend call → checkout page.
+    // Navigate to event details
     const goToDetail = () => navigate(`/events/${event.id}`);
 
     return (
-        // ── Poora card ek clickable unit hai ─────────────────────────────────
-        // cursor-pointer: hover pe hand cursor dikhe
-        // hover:shadow-lg + hover:-translate-y-1: lift effect → "interactive" feel
-        // hover:ring-2: subtle indigo ring → focus/hover state clear karta hai
+        // Entire card is an interactive clickable unit
         <div
             onClick={goToDetail}
             role="button"
@@ -68,7 +62,7 @@ const EventCard = ({ event }) => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
                     loading="lazy"
                 />
-                {/* Price badge — top right corner */}
+                {/* Price badge */}
                 <div className="absolute top-3 right-3 bg-white px-3 py-1 rounded-full text-xs font-semibold text-gray-800 shadow-sm">
                     {price}
                 </div>
@@ -101,14 +95,10 @@ const EventCard = ({ event }) => {
                     </div>
                 </div>
 
-                {/* ── Register Button (was: "View Details") ───────────────────
-                    onClick: stopPropagation kiya — card ka onClick na chalے
-                    (dono same jagah le jaate hain lekin button ka apna style hai)
-                    Solid indigo background → strong call-to-action feel
-                ─────────────────────────────────────────────────────────────── */}
+                {/* ── Register Button ─────────────────────────────────────────── */}
                 <button
                     onClick={(e) => {
-                        e.stopPropagation(); // Card ke onClick se conflict na ho
+                        e.stopPropagation(); // Avoid event propagation to parent container
                         goToDetail();
                     }}
                     className="

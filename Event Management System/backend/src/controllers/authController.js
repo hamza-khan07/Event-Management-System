@@ -2,10 +2,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db.js');
 
-// ─── Helper: JWT Cookie Set Karna ─────────────────────────────
+// ─── Helper: Set JWT in HTTP-Only Cookie ───────────────────────
 /**
- * JWT token banao aur HTTP-only cookie mein set karo.
- * HTTP-only = JavaScript is cookie ko access nahi kar sakti (XSS safe)
+ * Signs a JWT token and sets it in an HTTP-only cookie.
+ * HTTP-only ensures JavaScript cannot read the cookie (XSS protection).
  */
 const sendTokenCookie = (res, user) => {
     const payload = {
@@ -23,8 +23,8 @@ const sendTokenCookie = (res, user) => {
     const expireHours = parseInt(process.env.JWT_EXPIRES_IN, 10) || 24;
 
     res.cookie('token', token, {
-        httpOnly: true,          // JavaScript is cookie ko read nahi kar sakti
-        secure: false,           // Development mein false (HTTPS nahi hai), production mein true
+        httpOnly: true,          // Prevents client-side JS access
+        secure: false,           // Set to true in production with HTTPS
         sameSite: 'lax',        // CSRF protection
         maxAge: expireHours * 60 * 60 * 1000
     });
@@ -40,8 +40,6 @@ const register = async (req, res, next) => {
     try {
         const { name, email, password } = req.body;
 
-        // Manual validation replaced by Zod Validation Middleware
-
         // ── Duplicate Email Check ──
         const [existingUsers] = await db.query(
             'SELECT id FROM users WHERE email = ?',
@@ -55,19 +53,19 @@ const register = async (req, res, next) => {
             });
         }
 
-        // ── Password Hash Karo ──
-        // bcrypt.hash(password, saltRounds) — saltRounds=12 means very secure
+        // ── Hash Password ──
+        // bcrypt.hash with salt rounds = 12
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // ── User Insert Karo ──
-        // IMPORTANT: Role is always 'PARTICIPANT' for public registration
-        // PRODUCT_MANAGER aur ORGANIZER public nahi bana sakte — security rule
+        // ── Insert User ──
+        // SECURITY RULE: Public registrations are strictly created with role 'PARTICIPANT'.
+        // Roles like PRODUCT_MANAGER and ORGANIZER cannot be self-assigned publicly.
         const [result] = await db.query(
             'INSERT INTO users (name, email, password, role, company_id) VALUES (?, ?, ?, ?, ?)',
             [name.trim(), email.toLowerCase().trim(), hashedPassword, 'PARTICIPANT', null]
         );
 
-        // ── Safe Response (NO password in response) ──
+        // ── Safe Response (excluding password) ──
         return res.status(201).json({
             success: true,
             message: 'Account created successfully. Please log in.',
@@ -93,16 +91,14 @@ const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
-        // Manual validation replaced by Zod Validation Middleware
-
-        // ── User Dhundo by Email ──
+        // ── Find User by Email ──
         const [users] = await db.query(
             'SELECT id, company_id, name, email, password, role, status FROM users WHERE email = ?',
             [email.toLowerCase().trim()]
         );
 
-        // ── User nahi mila ──
-        // NOTE: Same message as wrong password — do not reveal which one is wrong (security)
+        // ── User Not Found ──
+        // Return generic message to avoid disclosing user existence (security best practice)
         if (users.length === 0) {
             return res.status(401).json({
                 success: false,
@@ -112,8 +108,7 @@ const login = async (req, res, next) => {
 
         const user = users[0];
 
-        // ── Password Compare Karo ──
-        // bcrypt.compare(entered, storedHash) — returns true or false
+        // ── Verify Password ──
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
@@ -123,7 +118,7 @@ const login = async (req, res, next) => {
             });
         }
 
-        // ── Account Status Check ──
+        // ── Check Account Status ──
         if (user.status === 'SUSPENDED') {
             return res.status(403).json({
                 success: false,
@@ -131,10 +126,10 @@ const login = async (req, res, next) => {
             });
         }
 
-        // ── JWT Token Banao aur Cookie Mein Set Karo ──
+        // ── Issue JWT Cookie ──
         sendTokenCookie(res, user);
 
-        // ── Safe User Info Return Karo (NO password) ──
+        // ── Return Sanitized User Info ──
         return res.status(200).json({
             success: true,
             message: 'Login successful.',
@@ -158,7 +153,7 @@ const login = async (req, res, next) => {
 // POST /api/auth/logout
 // ═══════════════════════════════════════════════════════════════
 const logout = (req, res) => {
-    // Cookie clear karo (same name, options match honi chahiye)
+    // Clear the authentication cookie
     res.clearCookie('token', {
         httpOnly: true,
         secure: false,
@@ -178,8 +173,8 @@ const logout = (req, res) => {
 // ═══════════════════════════════════════════════════════════════
 const getMe = async (req, res, next) => {
     try {
-        // req.user already attached by authMiddleware
-        // Fresh data fetch from DB (in case something changed)
+        // req.user is attached by authMiddleware
+        // Query fresh data from DB to verify current state
         const [users] = await db.query(
             'SELECT id, company_id, name, email, role, status, created_at FROM users WHERE id = ?',
             [req.user.id]
@@ -194,7 +189,7 @@ const getMe = async (req, res, next) => {
 
         const user = users[0];
 
-        // Check if account was suspended after token was issued
+        // Check if account was suspended after token issuance
         if (user.status === 'SUSPENDED') {
             return res.status(403).json({
                 success: false,

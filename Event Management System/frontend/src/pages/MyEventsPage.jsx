@@ -1,21 +1,19 @@
 // frontend/src/pages/MyEventsPage.jsx
 //
-// RESPONSIBILITY: Organizer ki saari events ek table mein dikhana.
+// RESPONSIBILITY: Display all events of the organizer in a table.
 //
 // Design Pattern:
-//   Bilkul same jaise CompaniesPage — Sidebar + table + search +
-//   pagination. Farq sirf yeh hai ke yahan "Create Event" button hai
-//   jo /organizer/events/create pe navigate karta hai.
+//   Follows the same pattern as CompaniesPage — Sidebar + table + search +
+//   pagination. Includes a "Create Event" button navigating to /organizer/events/create.
 //
 // Flow:
 //   Organizer → Sidebar "My Events" → MyEventsPage (table)
 //                                         ↓ "Create Event" button click
 //                                     CreateEventPage (form)
 //                                         ↓ submit
-//                                     Wapas MyEventsPage pe redirect
+//                                     Redirect back to MyEventsPage
 //
-// DRY: Drawer component reuse, EventStatusBadge reuse, same pagination
-//      pattern jo CompaniesPage mein use hua.
+// DRY: Reuses Drawer, EventStatusBadge, and identical pagination pattern.
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Context/AuthContext';
@@ -26,13 +24,12 @@ import Drawer from '../components/drawer';
 
 // ─────────────────────────────────────────────────────────────────
 // REUSABLE: EventStatusBadge
-// Kyun: Status badge 3 jagah use hoga — table row, drawer header,
-// aur future pages. Ek component, props se control (DRY).
+// Purpose: Status badge used across table row, drawer header, and pages.
 //
-// Event 3 statuses hoti hain:
-//   DRAFT       → gray    (abhi visible nahi)
+// Event statuses:
+//   DRAFT       → gray    (not yet visible publicly)
 //   PUBLISHED   → green   (open for registrations)
-//   CANCELLED   → red     (band kar di)
+//   CANCELLED   → red     (cancelled)
 // ─────────────────────────────────────────────────────────────────
 const EventStatusBadge = ({ status }) => {
     const styles = {
@@ -48,9 +45,8 @@ const EventStatusBadge = ({ status }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// REUSABLE: InfoRow (Drawer ke andar label-value pairs ke liye)
-// Kyun: Drawer mein event details label/value pattern repeat hota —
-// DRY: ek component, baar baar use karo.
+// REUSABLE: InfoRow (label-value pairs inside drawer)
+// Standardized reusable component to avoid duplicating label/value layout.
 // ─────────────────────────────────────────────────────────────────
 const InfoRow = ({ label, value }) => (
     <div className="flex justify-between items-start py-2 border-b border-gray-50 last:border-0">
@@ -86,15 +82,14 @@ const MyEventsPage = () => {
     };
 
     // ── Fetch Events ────────────────────────────────────────────
-    // useCallback: function reference stable rakhta hai
-    // taake useEffect infinite loop mein na jaaye
+    // useCallback: maintains stable function reference to prevent infinite re-render loops
     const fetchEvents = useCallback(async (searchTerm = '', status = '', page = 1, currentLimit = 10) => {
         setLoading(true);
         try {
             const res = await axios.get('http://localhost:5000/api/events/my-events', {
                 params: {
                     search: searchTerm,
-                    status,            // '' = sab, 'DRAFT' = sirf drafts, etc.
+                    status,            // '' = all, 'DRAFT' = drafts only, etc.
                     page,
                     limit: currentLimit
                 },
@@ -115,18 +110,13 @@ const MyEventsPage = () => {
         }
     }, []);
 
-    // Search, filter, page, ya limit change hone par re-fetch
+    // Re-fetch whenever search, filter, page, or limit changes
     useEffect(() => {
         fetchEvents(search, statusFilter, pagination.currentPage, limit);
     }, [search, statusFilter, pagination.currentPage, limit]);
-    // Note: fetchEvents useCallback mein hai isliye yeh stable hai —
-    // infinite re-render nahi hoga.
 
     // ── Row Click: Event detail drawer ──────────────────────────
-    // Row click karo → drawer mein us event ki full detail aaye.
-    // Hum already table mein saara data hai, toh API call avoid karo.
-    // (Bari list mein JOIN data hota hai — drawer ke liye extra call
-    //  nahi chahiye abhi, direct selected data use karo)
+    // Row click handler — populate drawer with selected event details
     const handleRowClick = (event) => {
         setSelectedEvent(event);
         setDrawerOpen(true);
@@ -138,8 +128,7 @@ const MyEventsPage = () => {
     };
 
     // ── Status Change (from Drawer) ──────────────────────────────
-    // Organizer drawer mein se event status toggle kar sakta hai
-    // (DRAFT ↔ PUBLISHED, ya PUBLISHED → CANCELLED)
+    // Toggle event status from the drawer (DRAFT ↔ PUBLISHED, or PUBLISHED → CANCELLED)
     const handleStatusChange = async (eventId, newStatus) => {
         setStatusUpdating(true);
         try {
@@ -148,11 +137,11 @@ const MyEventsPage = () => {
                 { status: newStatus },
                 { withCredentials: true }
             );
-            // Local state update — page reload avoid karo
+            // Update local state without reloading the page
             setEvents(prev =>
                 prev.map(e => e.id === eventId ? { ...e, status: newStatus } : e)
             );
-            // Drawer mein bhi update karo
+            // Update selected event in drawer state as well
             setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
         } catch (err) {
             console.error('Failed to update event status:', err);
@@ -187,7 +176,6 @@ const MyEventsPage = () => {
     };
 
     // ── Date formatter (DRY helper) ──────────────────────────────
-    // Har jagah alag format likhne ki zaroorat nahi
     const formatDate = (dateStr) =>
         new Date(dateStr).toLocaleDateString('en-US', {
             year: 'numeric', month: 'short', day: 'numeric'
@@ -211,9 +199,7 @@ const MyEventsPage = () => {
             <main className="flex-1 p-6 overflow-y-auto">
 
                 {/* ── Header: Title + Create Event Button ── */}
-                {/* Yahan "Create Event" button hai — bilkul upar right side mein.
-                    Click karo → /organizer/events/create pe navigate karo.
-                    Yahi pattern hai: list page + action button = standard UX. */}
+                {/* Header with title and Create Event action button */}
                 <header className="mb-6 flex justify-between items-start">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900">My Events</h1>
@@ -231,9 +217,7 @@ const MyEventsPage = () => {
                 </header>
 
                 {/* ── Filters Bar ── */}
-                {/* Search + Status Filter + Rows per page — ek row mein.
-                    Status filter extra hai (companies mein nahi tha) kyunke
-                    events ke 3 statuses hain — organizer filter karna chahega. */}
+                {/* Search + Status Filter + Rows per page */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-4 flex flex-wrap justify-between items-center gap-3">
                     {/* Search */}
                     <input
@@ -242,7 +226,7 @@ const MyEventsPage = () => {
                         value={search}
                         onChange={(e) => {
                             setSearch(e.target.value);
-                            setPagination(p => ({ ...p, currentPage: 1 })); // Page 1 par reset
+                            setPagination(p => ({ ...p, currentPage: 1 })); // Reset to page 1
                         }}
                         className="w-full max-w-xs px-4 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                     />
@@ -297,7 +281,7 @@ const MyEventsPage = () => {
                                     <th className="p-4 font-semibold">Date</th>
                                     <th className="p-4 font-semibold">Venue</th>
                                     <th className="p-4 font-semibold">Price</th>
-                                    {/* Registrations: "5 / 100" format — filled / capacity */}
+                                    {/* Registrations: filled / capacity */}
                                     <th className="p-4 font-semibold text-center">Registrations</th>
                                     <th className="p-4 font-semibold">Status</th>
                                 </tr>
@@ -321,7 +305,7 @@ const MyEventsPage = () => {
                                         onClick={() => handleRowClick(event)}
                                         className="border-b border-gray-50 last:border-0 hover:bg-slate-50 transition cursor-pointer"
                                     >
-                                        {/* Title: max-width + truncate — lambi title table break na kare */}
+                                        {/* Title: max-width + truncate to prevent overflow */}
                                         <td className="p-4 text-sm font-medium text-gray-900 max-w-[200px]">
                                             <span className="block truncate">{event.title}</span>
                                         </td>
@@ -389,9 +373,7 @@ const MyEventsPage = () => {
             </main>
 
             {/* ── Event Detail Drawer ── */}
-            {/* Reusable Drawer component — bilkul same jaise CompaniesPage mein.
-                Row click karo → drawer slide in → event ki full detail.
-                Footer mein status change buttons hain. */}
+            {/* Reusable Drawer component displaying event details and actions */}
             <Drawer
                 isOpen={drawerOpen}
                 onClose={closeDrawer}

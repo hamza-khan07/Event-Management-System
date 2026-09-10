@@ -1,11 +1,10 @@
 // frontend/src/pages/OrganizerCompanyPage.jsx
 //
-// RESPONSIBILITY: Organizer ki company profile aur team members manage karne ka page.
-// YEH PAGE PEHLE OrganizerDashboardPage.jsx mein tha — hum ne use
-// separate file mein nikaala. Kyun? Single Responsibility Principle (SRP):
+// RESPONSIBILITY: Manage organizer's company profile and team members.
+// Adheres to the Single Responsibility Principle (SRP):
 //   - OrganizerDashboardPage → Analytics overview (stats, charts, table)
 //   - OrganizerCompanyPage   → Company profile management (edit, team)
-// Dono ko alag rakhne se dono ko independently modify karna aasaan hai.
+// Keeping them separate allows independent maintenance and testing.
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
@@ -15,11 +14,7 @@ import Sidebar from '../components/dashboard/Sidebar';
 
 // ─────────────────────────────────────────────────────────────────
 // REUSABLE SUB-COMPONENT: InfoRow
-//
-// Kyun alag component?
-// Company profile mein 5+ label-value rows hain. Agar har row ke
-// liye alag div likhen to code repeat hoga (DRY violation).
-// Ek component banao, props se data pass karo — DRY!
+// Reusable row for company profile label-value pairs adhering to DRY.
 // ─────────────────────────────────────────────────────────────────
 const InfoRow = ({ label, value }) => (
     <div className="flex justify-between items-start py-2.5 border-b border-gray-50 last:border-0">
@@ -30,10 +25,7 @@ const InfoRow = ({ label, value }) => (
 
 // ─────────────────────────────────────────────────────────────────
 // REUSABLE SUB-COMPONENT: StatusBadge
-//
-// Kyun alag component?
-// Status badge (ACTIVE/SUSPENDED) company aur team members dono
-// mein use hota hai. DRY: ek component, baar baar use karo.
+// Reusable status badge (ACTIVE/SUSPENDED) shared between company and team views.
 // ─────────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => (
     <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full ${
@@ -51,15 +43,15 @@ const OrganizerCompanyPage = () => {
     const navigate = useNavigate();
 
     // ── State ─────────────────────────────────────────────────────
-    const [company, setCompany] = useState(null);       // Company ka data (DB se)
+    const [company, setCompany] = useState(null);       // Company data from DB
     const [loading, setLoading] = useState(true);
-    const [isEditing, setIsEditing] = useState(false);  // View mode ya Edit mode?
-    const [saving, setSaving] = useState(false);         // Save button disabled rakhne ke liye
+    const [isEditing, setIsEditing] = useState(false);  // View mode vs Edit mode
+    const [saving, setSaving] = useState(false);         // Disables save button during request
     const [saveError, setSaveError] = useState('');
     const [saveSuccess, setSaveSuccess] = useState('');
 
-    // Edit form ka local state — company data load hone par initialize hoga
-    // Kyun alag state? — Agar user "Cancel" kare to original data restore ho sake
+    // Edit form state initialized once company data loads
+    // Maintained separately to allow canceling without altering current display
     const [formData, setFormData] = useState({
         name: '',
         description: '',
@@ -78,7 +70,7 @@ const OrganizerCompanyPage = () => {
     };
 
     // ── Data Fetch on Mount ───────────────────────────────────────
-    // useEffect([]) — sirf ek baar, component load hone par
+    // Fetch data once on component mount
     useEffect(() => {
         fetchData();
     }, []);
@@ -92,7 +84,7 @@ const OrganizerCompanyPage = () => {
             );
             if (res.data.success) {
                 setCompany(res.data.data);
-                // Form ko DB se aaye data se pre-fill karo
+                // Pre-fill form state with data from database
                 setFormData({
                     name: res.data.data.name || '',
                     description: res.data.data.description || '',
@@ -113,7 +105,7 @@ const OrganizerCompanyPage = () => {
     };
 
     // ── Single Input Handler (DRY) ────────────────────────────────
-    // [e.target.name] = computed property key — ek function se sab fields handle
+    // Single change handler using computed property keys
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
@@ -133,7 +125,7 @@ const OrganizerCompanyPage = () => {
                 { withCredentials: true }
             );
             if (res.data.success) {
-                // Spread operator: purana company data rakh, sirf changed fields update karo
+                // Merge updated fields into company state
                 setCompany(prev => ({ ...prev, ...res.data.data }));
                 setSaveSuccess('Company updated successfully!');
                 setIsEditing(false);
@@ -146,7 +138,7 @@ const OrganizerCompanyPage = () => {
     };
 
     // ── Cancel Handler ────────────────────────────────────────────
-    // Form data ko original company data se reset karo
+    // Reset form data back to original company data
     const handleCancel = () => {
         setFormData({
             name: company?.name || '',
@@ -165,8 +157,7 @@ const OrganizerCompanyPage = () => {
     };
 
     // ── Reusable Form Field (DRY) ─────────────────────────────────
-    // Edit form mein fields hain — same layout, sirf label/name/type alag.
-    // Ek component se sab handle karo. isTextarea prop se textarea ya input choose karo.
+    // Form field component supporting text inputs and textarea
     const FormField = ({ label, name, type = 'text', isTextarea = false, placeholder = '' }) => (
         <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
@@ -323,7 +314,7 @@ const OrganizerCompanyPage = () => {
                                         <FormField label="Logo Image URL" name="logo" placeholder="https://images.unsplash.com/..." />
                                         <FormField label="Banner Image URL" name="banner" placeholder="https://images.unsplash.com/..." />
                                     </div>
-                                    {/* Status — read only, sirf PM change karta hai */}
+                                    {/* Status — read-only, managed by Product Manager */}
                                     <div>
                                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
                                             Status (Read-only)
@@ -358,7 +349,7 @@ const OrganizerCompanyPage = () => {
                                             <div>
                                                 <p className="text-sm font-medium text-gray-900">
                                                     {org.name}
-                                                    {/* "You" badge — logged-in organizer ko highlight karo */}
+                                                    {/* "You" badge for the current logged-in organizer */}
                                                     {org.id === user?.id && (
                                                         <span className="ml-2 text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded font-bold">
                                                             You

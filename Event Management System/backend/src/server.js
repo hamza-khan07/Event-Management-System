@@ -1,10 +1,8 @@
 const path = require('path');
 // Exact path to backend/.env
 require('dotenv').config({ path: path.join(__dirname, './../.env') });
-
-const app = require('./app.js');
 require('./config/db.js')
-
+const app = require('./app.js');
 
 const PORT = process.env.PORT || 5000;
 

@@ -3,16 +3,16 @@ const jwt = require('jsonwebtoken');
 /**
  * Authentication Middleware
  * 
- * Har protected route se pehle ye chalega.
- * Kaam: Cookie se JWT token nikalna, verify karna,
- *       aur user info ko req.user mein rakhna.
+ * Runs before any protected route.
+ * Responsibility: Extract JWT token from cookie, verify it,
+ * and attach decoded user information to req.user.
  */
 const protect = (req, res, next) => {
     try {
-        // 1. Cookie se token nikalo
+        // 1. Extract token from cookies
         const token = req.cookies.token;
 
-        // 2. Agar token hai hi nahi — unauthorized
+        // 2. Reject request if no token is found
         if (!token) {
             return res.status(401).json({
                 success: false,
@@ -20,18 +20,17 @@ const protect = (req, res, next) => {
             });
         }
 
-        // 3. Token verify karo JWT_SECRET ke saath
+        // 3. Verify token with JWT_SECRET
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // 4. Decoded user info request mein attach karo
-        //    (controllers mein req.user se access kar sakte hain)
+        // 4. Attach decoded user info to request (accessible in controllers via req.user)
         req.user = decoded;
 
-        // 5. Aage jaane do (next route/controller chalao)
+        // 5. Proceed to next middleware/controller
         next();
 
     } catch (error) {
-        // Token invalid ya expired hai
+        // Invalid or expired token
         return res.status(401).json({
             success: false,
             message: 'Invalid or expired token. Please log in again.'
@@ -42,13 +41,13 @@ const protect = (req, res, next) => {
 /**
  * Role Authorization Middleware
  * 
- * Ye middleware tab chalega jab 'protect' pass ho jayega (yaani user logged in hai).
- * Isay hum batayenge ke kon kon se roles is route ko access kar sakte hain.
+ * Executes after 'protect' middleware succeeds (ensuring the user is authenticated).
+ * Validates whether the user's role matches any of the allowed roles for the route.
  */
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
-        // req.user humein 'protect' middleware se mila hai
-        // Agar user ka role un roles mein nahi hai jo humne allow kiye hain
+        // req.user is populated by 'protect' middleware
+        // Deny access if user role is not in the allowed list
         if (!allowedRoles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
@@ -56,10 +55,9 @@ const authorizeRoles = (...allowedRoles) => {
             });
         }
 
-        // Agar role match kar gaya, toh aagay (controller ki taraf) jaane do
+        // Proceed if role matches
         next();
     };
 };
 
-// Dono ko export kar dein
 module.exports = { protect, authorizeRoles };

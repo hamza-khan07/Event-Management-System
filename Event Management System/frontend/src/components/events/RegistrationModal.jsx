@@ -1,16 +1,16 @@
 // frontend/src/components/events/RegistrationModal.jsx
 //
-// RESPONSIBILITY: Event registration form — modal style (overlay).
+// RESPONSIBILITY: Event registration form modal overlay.
 //
 // UI States (3):
-//   1. FORM    → user fields fill kar raha hai
-//   2. LOADING → API call chal rahi hai (button disabled)
-//   3. SUCCESS → registration ho gayi — confirmation code dikhao
+//   1. FORM    → User fills registration input fields
+//   2. LOADING → API request in progress (button disabled)
+//   3. SUCCESS → Registration completed — displays confirmation code
 //
 // Props:
-//   event    → { id, title, price } — event detail (parent se)
-//   onClose  → modal band karne ka function
-//   onSuccess → optional callback jab registration kamyaab ho
+//   event     → { id, title, price } — Event details
+//   onClose   → Function to close modal
+//   onSuccess → Optional callback upon successful registration
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,12 +23,10 @@ import { useAuth } from '../../Context/AuthContext';
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 const RegistrationModal = ({ event, onClose, onSuccess }) => {
-    const { user } = useAuth();    // Logged-in user ka data (pre-fill ke liye)
-    const navigate = useNavigate(); // Checkout pe redirect ke liye
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
     // ── Form State ──────────────────────────────────────────────────────────
-    // name aur email pre-fill karo user context se — editable hai taake user
-    // form mein naam correct kar sake agar galat ho
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
@@ -40,20 +38,17 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(null);
-    // Capacity state: booked seats, total capacity
-    // null jab tak API se data na aaye
     const [capacity, setCapacity] = useState(null);
     const [capacityLoading, setCapacityLoading] = useState(true);
 
-    // ── Modal open hote hi capacity fetch karo ───────────────────────────────
-    // Kyun useEffect? Side effect hai (API call) — render ke baad hona chahiye
+    // ── Fetch capacity on modal open ─────────────────────────────────────────
     useEffect(() => {
         const fetchCapacity = async () => {
             try {
                 const data = await getEventCapacity(event.id);
                 if (data.success) setCapacity(data.data);
             } catch {
-                // Capacity load nahi hua toh silently ignore — non-critical
+                // Non-critical: ignore capacity failure
                 setCapacity(null);
             } finally {
                 setCapacityLoading(false);
@@ -63,15 +58,14 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
         fetchCapacity();
     }, [event.id]);
 
-    // ── Escape key se modal band karo ────────────────────────────────────────
+    // ── Close modal on Escape key ────────────────────────────────────────────
     useEffect(() => {
         const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
         document.addEventListener('keydown', handleEsc);
         return () => document.removeEventListener('keydown', handleEsc);
     }, [onClose]);
 
-    // ── Body scroll lock ─────────────────────────────────────────────────────
-    // Modal open ho tab background scroll na kare — UX standard practice
+    // ── Lock body scroll when modal is open ───────────────────────────────────
     useEffect(() => {
         document.body.style.overflow = 'hidden';
         return () => { document.body.style.overflow = 'unset'; };
@@ -81,30 +75,26 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
-        setError('');   // User kuch type kare toh error clear ho — better UX
+        setError('');
     };
 
-    // ── Form Submit ───────────────────────────────────────────────────────────
+    // ── Form Submit Handler ───────────────────────────────────────────────────
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
-            // Backend sirf ticket_count aur phone_number leta hai.
-            // name/email backend JWT se read karta hai — form ke editable fields
-            // sirf UX ke liye hain (user check kar sake apna naam).
             const payload = {
                 ticket_count: parseInt(formData.ticket_count),
-                // empty string ko null mein convert karo — backend null expect karta hai
                 phone_number: formData.phone_number.trim() || null
             };
 
             const data = await registerForEvent(event.id, payload);
 
-            // Paid event? → Checkout page pe redirect karo (modal band karo pehle)
+            // Paid event: Redirect to payment checkout page
             if (data.requiresPayment) {
-                onClose(); // Modal band karo
+                onClose();
                 navigate('/payment/checkout', {
                     state: {
                         registration_id: data.data.id,
@@ -116,14 +106,11 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
                 return;
             }
 
-            // Free event → same success screen
+            // Free event: Show success confirmation screen
             setSuccess(data.data);
             if (onSuccess) onSuccess(data.data);
 
         } catch (err) {
-            // err.response?.data?.message → backend ka specific error message
-            // err.message → network error ya unexpected JS error
-            // Last fallback → generic message
             const backendMsg = err.response?.data?.message;
             const networkMsg = err.message;
             setError(backendMsg || networkMsg || 'Registration failed. Please try again.');
@@ -344,10 +331,8 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
                     </button>
 
                     {/* ── Capacity Bar — Registered / Total ────────────────── */}
-                    {/* Kyun yahan? User ko pata ho kitni seats baaki hain — urgency create hoti hai */}
                     <div className="pt-1">
                         {capacityLoading ? (
-                            // Skeleton loader jab capacity load ho rahi ho
                             <div className="h-4 bg-gray-100 rounded animate-pulse" />
                         ) : capacity ? (
                             <div>
@@ -362,10 +347,10 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
                                 <div className="w-full bg-gray-100 rounded-full h-1.5">
                                     <div
                                         className={`h-1.5 rounded-full transition-all ${capacity.booked / capacity.total > 0.8
-                                            ? 'bg-red-500'      // 80%+ full → red (urgency)
+                                            ? 'bg-red-500'      // 80%+ full → red
                                             : capacity.booked / capacity.total > 0.5
-                                                ? 'bg-amber-400'   // 50-80% → amber (caution)
-                                                : 'bg-green-500'   // <50% → green (comfortable)
+                                                ? 'bg-amber-400'   // 50-80% → amber
+                                                : 'bg-green-500'   // <50% → green
                                             }`}
                                         style={{ width: `${Math.min((capacity.booked / capacity.total) * 100, 100)}%` }}
                                     />

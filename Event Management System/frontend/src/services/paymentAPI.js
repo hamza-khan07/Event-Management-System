@@ -1,6 +1,6 @@
 // frontend/src/services/paymentAPI.js
 //
-// RESPONSIBILITY: Payment API calls frontend se handle karna.
+// RESPONSIBILITY: Handle payment API requests from frontend.
 
 import axios from 'axios';
 
@@ -10,7 +10,7 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' }
 });
 
-// Auth token attach karo (localStorage se)
+// Attach auth token if present in localStorage
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -18,7 +18,7 @@ api.interceptors.request.use((config) => {
 });
 
 /**
- * Mock/Simulated payment process karo.
+ * Process simulated mock payment transaction.
  *
  * @param {Object} payload - { registration_id, card_number, expiry, cvv, account_name }
  * @returns {Object} { success, paymentStatus, txn_ref, registration_id, amount }

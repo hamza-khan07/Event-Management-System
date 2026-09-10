@@ -3,7 +3,7 @@ const { z } = require('zod');
 
 // ─────────────────────────────────────────────────────────────────
 // CREATE EVENT SCHEMA
-// Yahan hum strict validation rules define karte hain Zod ke saath.
+// Strict validation rules defined using Zod.
 // ─────────────────────────────────────────────────────────────────
 
 // Date validation helper for "min today"
@@ -31,16 +31,16 @@ const createEventSchema = z.object({
     end_time: z.string({ required_error: 'End time is required.' })
         .regex(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, 'Invalid end time format. Use HH:MM or HH:MM:SS.'),
 
-    // Coerce converts strings like "100" to number 100
+    // Coerce converts numeric string representations (e.g. "100") to integer 100
     capacity: z.coerce.number({
         required_error: 'Capacity is required.',
         invalid_type_error: 'Capacity must be a valid number.'
     }).int().min(1, 'Capacity must be at least 1.'),
 
-    // price: "Free", "PKR 2,500" — VARCHAR isliye kyunke "Free" bhi valid value hai
+    // price: "Free", "PKR 2,500" — Stored as VARCHAR to accommodate both labels and formatted amounts
     price: z.string().optional().nullable(),
 
-    // image_url: event ki banner image — agar URL diya toh valid hona chahiye
+    // image_url: Event banner image — must be a valid URL if provided
     image_url: z.string().url('Invalid image URL format.').optional().nullable(),
 
     status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT')
@@ -56,7 +56,7 @@ const updateEventStatusSchema = z.object({
     })
 });
 
-// .partial() lagane se saari fields optional ho jati hain (PUT request k liye best hy)
+// .partial() makes all fields optional (ideal for PUT/PATCH requests)
 const updateEventSchema = createEventSchema.partial();
 
 module.exports = {

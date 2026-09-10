@@ -57,11 +57,11 @@ CREATE TABLE events (
 );
 
 -- 4. REGISTRATIONS TABLE
--- Kyun yeh fields?
---   ticket_count     → ek user kitne seats book kar raha hai
---   phone_number     → event organizer emergency mein contact kar sake
---   registration_code → unique confirmation code (like a ticket ID: EVT-XXXX-XXXX)
---   UNIQUE KEY       → ek user ek event mein sirf ek baar register ho sake (DB-level protection)
+-- Why these fields?
+--   ticket_count      → Number of seats the user is reserving
+--   phone_number      → Emergency contact number for event organizers
+--   registration_code → Unique confirmation code (ticket ID: EVT-XXXX-XXXX)
+--   UNIQUE KEY        → Ensures a user can only register once per event (database-level constraint)
 CREATE TABLE registrations (
     id                INT AUTO_INCREMENT PRIMARY KEY,
     user_id           INT NOT NULL,

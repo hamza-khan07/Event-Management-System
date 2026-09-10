@@ -1,17 +1,17 @@
 // frontend/src/pages/OrganizerDashboardPage.jsx
 //
-// RESPONSIBILITY: Organizer ka "Overview" analytics dashboard.
-// Yeh page login ke baad pehla page hai — organizer ko ek nazar mein
-// apni company ki health dikhayi jaati hai.
+// RESPONSIBILITY: Organizer "Overview" analytics dashboard.
+// This is the landing page after login — giving the organizer an immediate
+// view of their company's performance and health.
 //
 // Architecture:
-//   - 4 StatCards  → Summary numbers (totalEvents, registrations, etc.)
+//   - 4 StatCards  → Summary metrics (totalEvents, registrations, etc.)
 //   - LineChart    → Last 6 months registration trend
 //   - PieChart     → Events by status (DRAFT/PUBLISHED/CANCELLED)
 //   - Table        → Last 5 events with fill rate progress bar
 //
-// Charts library: recharts (PM dashboard mein bhi yahi use ho rahi hai — consistency!)
-// DRY: StatusBadge, StatCard sab reusable components hain.
+// Charts library: recharts (consistent with the PM dashboard)
+// DRY: StatusBadge, StatCard are reusable components.
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
@@ -28,16 +28,16 @@ import Sidebar from '../components/dashboard/Sidebar';
 
 // ─────────────────────────────────────────────────────────────────
 // REUSABLE: StatusBadge
-// Kyun: Status display multiple jagah chahiye (table mein bhi).
-// DRY: Ek component, props se value lo.
+// Purpose: Displays event status across multiple places (including tables).
+// DRY: Single component accepting props.
 //
-// Yeh component sirf EVENT status ke liye hai — 3 possible values:
+// Specific to EVENT status — 3 possible values:
 //   DRAFT       → gray
 //   PUBLISHED   → blue/green
 //   CANCELLED   → red
 // ─────────────────────────────────────────────────────────────────
 const EventStatusBadge = ({ status }) => {
-    // Object lookup — agar baar baar if/else likhein to code messy hota
+    // Object lookup to keep conditional styling clean and readable
     const styles = {
         PUBLISHED: 'bg-emerald-100 text-emerald-700',
         DRAFT: 'bg-gray-100 text-gray-600',
@@ -52,17 +52,16 @@ const EventStatusBadge = ({ status }) => {
 
 // ─────────────────────────────────────────────────────────────────
 // REUSABLE: FillRateBar
-// Kyun: Fill rate (capacity utilization) ek visual progress bar se
-// zyada clearly samajh aati hai numbers ki bajaye.
-// Yeh DRY component table ke har row mein use hoga.
+// Purpose: Visual progress bar representing fill rate (capacity utilization).
+// Used across each row in the recent events table.
 //
 // Color logic:
-//   < 40%  → red (kam registrations)
-//   < 75%  → yellow (theek theek)
-//   >= 75% → green (achi registrations)
+//   < 40%  → red (low registrations)
+//   < 75%  → yellow (moderate registrations)
+//   >= 75% → green (high registrations)
 // ─────────────────────────────────────────────────────────────────
 const FillRateBar = ({ rate }) => {
-    const pct = Math.min(rate || 0, 100);  // 100 se zyada na ho
+    const pct = Math.min(rate || 0, 100);  // Cap at 100%
     const color = pct >= 75 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444';
     return (
         <div className="flex items-center gap-2">
@@ -80,8 +79,7 @@ const FillRateBar = ({ rate }) => {
 
 // ─────────────────────────────────────────────────────────────────
 // PIE CHART COLOR MAP
-// Constant object isliye ke baar baar inline likhne se DRY violation hota.
-// Future mein status add ho to sirf yahan ek line add karo.
+// Centralized color configuration for event statuses in charts.
 // ─────────────────────────────────────────────────────────────────
 const STATUS_COLORS = {
     PUBLISHED: '#10b981',  // Emerald (healthy)
@@ -108,7 +106,7 @@ const OrganizerDashboardPage = () => {
     };
 
     // ── Data Fetch ────────────────────────────────────────────────
-    // useEffect([]) — sirf component mount par ek baar
+    // Fetch stats on component mount
     useEffect(() => {
         fetchOverviewStats();
     }, []);
@@ -119,7 +117,7 @@ const OrganizerDashboardPage = () => {
         try {
             const res = await axios.get(
                 'http://localhost:5000/api/organizer/overview-stats',
-                { withCredentials: true }  // JWT cookie bhejne ke liye
+                { withCredentials: true }  // Send JWT cookie
             );
             if (res.data.success) {
                 setOverviewData(res.data.data);
@@ -133,8 +131,7 @@ const OrganizerDashboardPage = () => {
     };
 
     // ── Destructure for clean JSX ─────────────────────────────────
-    // Agar overviewData null hai to default empty values use karo
-    // taake JSX mein baar baar ?. optional chaining na likhni pare
+    // Default empty structures to avoid repeated optional chaining in JSX
     const {
         summary = { totalEvents: 0, activeRegistrations: 0, totalCapacity: 0, upcomingEvents: 0 },
         registrationTrend = [],
@@ -143,8 +140,8 @@ const OrganizerDashboardPage = () => {
     } = overviewData || {};
 
     // ── Pie chart data prep ───────────────────────────────────────
-    // Backend se [{status: 'PUBLISHED', count: 3}] aata hai.
-    // Recharts ko {name, value, color} chahiye — map karo.
+    // Backend returns [{status: 'PUBLISHED', count: 3}].
+    // Map to {name, value, color} format required by Recharts.
     const pieData = eventsByStatus.map(item => ({
         name: item.status,
         value: Number(item.count),
@@ -184,12 +181,11 @@ const OrganizerDashboardPage = () => {
 
                         {/* ════════════════════════════════════════════════════
                             ROW 1: STAT CARDS
-                            PM dashboard jaisa — 4 cards, grid layout.
-                            StatCard component reuse kar rahe hain (DRY!).
+                            Grid layout reusing StatCard component.
                         ════════════════════════════════════════════════════ */}
                         <h2 className="text-base font-semibold text-gray-800 mb-2">Company Statistics</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            {/* StatCard: reusable component — sirf title, count, colorClass pass karo */}
+                            {/* Reusable StatCard component */}
                             <StatCard
                                 title="Total Events"
                                 count={summary.totalEvents}
@@ -213,7 +209,7 @@ const OrganizerDashboardPage = () => {
                         </div>
 
                         {/* ════════════════════════════════════════════════════
-                            ROW 2: CHARTS (60/40 split — PM jaisa layout)
+                            ROW 2: CHARTS (60/40 split layout)
                         ════════════════════════════════════════════════════ */}
                         <div className="flex flex-col lg:flex-row gap-4 mb-6">
 
@@ -227,14 +223,14 @@ const OrganizerDashboardPage = () => {
                                     <TrendingUp size={16} className="text-blue-500" />
                                 </div>
 
-                                {/* Agar koi trend data nahi to placeholder dikhao */}
+                                {/* Show placeholder when trend data is empty */}
                                 {registrationTrend.length === 0 ? (
                                     <div className="flex-1 flex items-center justify-center min-h-[220px]">
                                         <p className="text-sm text-gray-400 italic">No registration data yet.</p>
                                     </div>
                                 ) : (
                                     <div className="flex-1 min-h-[220px]">
-                                        {/* ResponsiveContainer: chart parent ki width/height le leta hai automatically */}
+                                        {/* ResponsiveContainer adapts chart to parent dimensions */}
                                         <ResponsiveContainer width="100%" height="100%">
                                             <LineChart
                                                 data={registrationTrend}
@@ -291,7 +287,7 @@ const OrganizerDashboardPage = () => {
                                     <div className="flex-1 flex flex-col items-center justify-center min-h-[220px]">
                                         <ResponsiveContainer width="100%" height={180}>
                                             <PieChart>
-                                                {/* innerRadius > 0 = Donut chart — modern feel */}
+                                                {/* Donut chart configuration with innerRadius */}
                                                 <Pie
                                                     data={pieData}
                                                     innerRadius={55}
@@ -308,7 +304,7 @@ const OrganizerDashboardPage = () => {
                                             </PieChart>
                                         </ResponsiveContainer>
 
-                                        {/* Custom Legend — recharts ka default legend ugly hota hai */}
+                                        {/* Custom Legend */}
                                         <div className="flex flex-wrap justify-center gap-3 mt-2">
                                             {pieData.map((item, index) => (
                                                 <div key={index} className="flex items-center gap-1.5">
@@ -329,13 +325,12 @@ const OrganizerDashboardPage = () => {
 
                         {/* ════════════════════════════════════════════════════
                             ROW 3: RECENT EVENTS TABLE
-                            PM ke "Top Organizers" table jaisi feel.
-                            Fill Rate column: visual progress bar — zyada readable.
+                            Recent events with fill rate progress bar.
                         ════════════════════════════════════════════════════ */}
                         <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-sm font-bold text-gray-800">Recent Events</h3>
-                                {/* "View All" button — baad mein /organizer/events pe link karega */}
+                                {/* "View All" button */}
                                 <button className="text-xs text-blue-600 font-medium hover:underline">
                                     View All
                                 </button>
@@ -352,7 +347,7 @@ const OrganizerDashboardPage = () => {
                                             <tr className="border-b border-gray-100 text-[11px] uppercase tracking-wider text-gray-500">
                                                 <th className="pb-3 font-semibold">Event Name</th>
                                                 <th className="pb-3 font-semibold">Date</th>
-                                                {/* Registrations / Capacity: saath mein — zyada context milta hai */}
+                                                {/* Registrations / Capacity */}
                                                 <th className="pb-3 font-semibold">Registrations</th>
                                                 <th className="pb-3 font-semibold">Fill Rate</th>
                                                 <th className="pb-3 font-semibold text-right">Status</th>
@@ -368,7 +363,7 @@ const OrganizerDashboardPage = () => {
                                                         {event.title}
                                                     </td>
                                                     <td className="py-3 text-sm text-gray-600">
-                                                        {/* toLocaleDateString — human readable date */}
+                                                        {/* Formatted date */}
                                                         {new Date(event.event_date).toLocaleDateString('en-US', {
                                                             year: 'numeric',
                                                             month: 'short',
@@ -376,7 +371,7 @@ const OrganizerDashboardPage = () => {
                                                         })}
                                                     </td>
                                                     <td className="py-3 text-sm text-gray-600">
-                                                        {/* "5 / 50" format — registered / total capacity */}
+                                                        {/* Registered / total capacity */}
                                                         <span className="font-medium text-gray-900">{event.registrations}</span>
                                                         <span className="text-gray-400"> / {event.capacity}</span>
                                                     </td>

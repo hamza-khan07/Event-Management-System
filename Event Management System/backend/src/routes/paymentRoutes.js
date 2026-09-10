@@ -5,7 +5,7 @@ const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 const { createJazzCashPayment, jazzCashReturn, processMockPayment } = require("../controllers/paymentController");
 
 // POST /api/payments/jazzcash/create
-// → Sirf logged-in PARTICIPANT access kar sake
+// → Accessible only to authenticated PARTICIPANT users
 router.post(
     "/jazzcash/create",
     protect,
@@ -14,12 +14,12 @@ router.post(
 );
 
 // POST /api/payments/jazzcash/return
-// → PUBLIC: JazzCash directly is URL par POST karta hai
-// → Koi auth nahi — hash verification controller mein hai
+// → PUBLIC: JazzCash posts directly to this callback endpoint
+// → Secured via hash verification inside the controller
 router.post("/jazzcash/return", jazzCashReturn);
 
 // POST /api/payments/mock/process
-// → Simulated/Fake payment gateway — development ke liye
+// → Simulated payment gateway for development testing
 // → PARTICIPANT only — JWT protected
 router.post(
     "/mock/process",

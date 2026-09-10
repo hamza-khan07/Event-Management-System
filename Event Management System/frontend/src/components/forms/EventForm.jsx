@@ -1,6 +1,6 @@
 // frontend/src/components/forms/EventForm.jsx
-// Kyun alag component? DRY principle — Create aur Edit dono same form use karein.
-// mode="create" ya mode="edit" prop se behavior change hoga.
+// Reusable form component shared across both Create and Edit event flows (DRY).
+// Configured dynamically via mode="create" or mode="edit" prop.
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -56,16 +56,14 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
     const [apiError, setApiError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
-    // Edit mode mein — existing data se form prefill karo
+    // Pre-populate fields in edit mode
     useEffect(() => {
         if (isEdit && eventData) {
             const formattedDate = eventData.event_date
                 ? new Date(eventData.event_date).toISOString().split('T')[0]
                 : '';
 
-            // MySQL time columns "HH:MM:SS" return karte hain (e.g., "09:00:00")
-            // lekin HTML <input type="time"> aur Zod dono "HH:MM" expect karte hain.
-            // .substring(0, 5) → "09:00:00" se sirf "09:00" nikalo
+            // Format "HH:MM:SS" time string down to "HH:MM" for HTML input[type=time]
             const trimTime = (t) => t ? t.substring(0, 5) : '';
 
             const rawPrice = eventData.price || 'Free';
@@ -96,7 +94,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         setApiError('');
     };
 
-    // Frontend validation — UX ke liye (network call bachao)
+    // Client-side validation to provide immediate user feedback
     const validate = () => {
         const newErrors = {};
         if (!formData.title.trim() || formData.title.trim().length < 3)

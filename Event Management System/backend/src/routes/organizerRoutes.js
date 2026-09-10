@@ -8,14 +8,13 @@ const validate = require('../middleware/validateMiddleware');
 const { companySchema } = require('../validations/companyValidation');
 
 // ─────────────────────────────────────────────────────────────
-// Tamam routes par double protection:
-// 1. protect         → Login hona zaroori (JWT valid ho)
-// 2. authorizeRoles  → Sirf ORGANIZER role allowed
+// Route protection configuration:
+// 1. protect         → Requires authenticated session (valid JWT)
+// 2. authorizeRoles  → Restricts access exclusively to 'ORGANIZER'
 //
-// GET  /api/organizer/overview-stats → analytics overview
-// GET  /api/organizer/my-company     → apni company ki info
-// PUT  /api/organizer/my-company     → apni company update karo
-// GET  /api/organizer/my-profile     → apna profile
+// GET  /api/organizer/overview-stats → Analytics overview for organizer dashboard
+// GET  /api/organizer/my-company     → Retrieve company details for current organizer
+// PUT  /api/organizer/my-company     → Update company details for current organizer
 // ─────────────────────────────────────────────────────────────
 
 router.get('/overview-stats',   protect, authorizeRoles('ORGANIZER'), getOrganizerOverviewStats);
@@ -23,7 +22,7 @@ router.get('/overview-stats',   protect, authorizeRoles('ORGANIZER'), getOrganiz
 router.get('/my-company',       protect, authorizeRoles('ORGANIZER'), getMyCompany);
 router.put('/my-company',       protect, authorizeRoles('ORGANIZER'), validate(companySchema, 'body'), updateMyCompany);
 
-// GET /api/organizer/my-participants — participants ki list (with filters + pagination)
+// GET /api/organizer/my-participants → List registered participants (supports filters + pagination)
 router.get('/my-participants',  protect, authorizeRoles('ORGANIZER'), getMyParticipants);
 
 module.exports = router;

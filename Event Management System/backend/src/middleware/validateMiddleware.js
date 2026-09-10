@@ -3,10 +3,9 @@ const { ZodError } = require('zod');
 
 // ─────────────────────────────────────────────────────────────────
 // ZOD VALIDATION MIDDLEWARE
-// Kyun: Controllers mein validation (if-else) likhne se controller
-// messy ho jata hai. Yeh middleware Zod schema accept karega aur
-// request data (body, query, params) validate karega.
-// Agar validation fail hui to 400 response de dega.
+// Responsibility: Validates incoming request data (body, query, params)
+// against a given Zod schema and returns a structured 400 Bad Request
+// response if validation fails, keeping controllers clean.
 // ─────────────────────────────────────────────────────────────────
 const validate = (schema, source = 'body') => {
     return (req, res, next) => {
@@ -17,7 +16,7 @@ const validate = (schema, source = 'body') => {
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                // Zod mein issues array hoti hai (error.issues)
+                // Extract error messages from Zod issues array
                 const issues = error.issues || error.errors || [];
                 const errorMessage = issues.map(err => err.message).join(', ') || error.message;
                 return res.status(400).json({

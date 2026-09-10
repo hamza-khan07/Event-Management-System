@@ -1,12 +1,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-
-
 const Sidebar = ({ user, handleLogout }) => {
     const location = useLocation();
 
-    // linkClass: exact path match ke liye (most links ke liye)
+    // linkClass: for exact route matching
     const linkClass = (path) =>
         `py-2 px-3 rounded-lg text-sm font-medium transition ${
             location.pathname === path
@@ -14,10 +12,8 @@ const Sidebar = ({ user, handleLogout }) => {
                 : 'hover:bg-slate-800 text-slate-300'
         }`;
 
-    // prefixLinkClass: prefix match ke liye
-    // Kyun? "My Events" link /organizer/events pe hai lekin jab user
-    // /organizer/events/create par ho tab bhi yeh active dikhna chahiye.
-    // location.pathname.startsWith() se yeh achieve hota hai.
+    // prefixLinkClass: for matching route prefixes
+    // Keeps navigation active when nested pages are active (e.g. /organizer/events/create)
     const prefixLinkClass = (prefix) =>
         `py-2 px-3 rounded-lg text-sm font-medium transition ${
             location.pathname.startsWith(prefix)
@@ -34,11 +30,9 @@ const Sidebar = ({ user, handleLogout }) => {
                 <h2 className="text-lg font-bold tracking-wider">Dashboard</h2>
             </div>
 
-
             {/* ── PM-only Navigation ── */}
             {user?.role === 'PRODUCT_MANAGER' && (
                 <>
-
                     <Link to="/dashboard" className={linkClass('/dashboard')}>
                         Overview
                     </Link>
@@ -63,7 +57,7 @@ const Sidebar = ({ user, handleLogout }) => {
                     <Link to="/organizer/company" className={linkClass('/organizer/company')}>
                         My Company
                     </Link>
-                    {/* prefixLinkClass use kiya — /organizer/events/create par bhi active rahe */}
+                    {/* Active for nested event routes as well */}
                     <Link to="/organizer/events" className={prefixLinkClass('/organizer/events')}>
                         My Events
                     </Link>

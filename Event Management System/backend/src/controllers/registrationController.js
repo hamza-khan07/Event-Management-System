@@ -1,25 +1,21 @@
 // backend/src/controllers/registrationController.js
 //
-// RESPONSIBILITY: Event registration ke sab operations handle karo.
+// RESPONSIBILITY: Manage event registration operations.
 //
 // Functions:
-//   1. registerForEvent    → POST /api/registrations/:eventId
+//   1. registerForEvent     → POST /api/registrations/:eventId
 //   2. cancelMyRegistration → PUT /api/registrations/:id/cancel
-//   3. getMyRegistrations  → GET /api/registrations/my
+//   3. getMyRegistrations   → GET /api/registrations/my
+//   4. getEventCapacity     → GET /api/registrations/event/:eventId/capacity
 //
 // Design Decisions:
-//   - user_id hamesha JWT (req.user.id) se aata hai — URL se nahi.
-//     Kyun? Security: koi bhi user ka ID URL mein dal kar doosre ki behalf se register na kare.
-//   - registration_code backend pe generate hota hai — frontend pe nahi.
-//     Kyun? Frontend user manipulate kar sakta hai, backend trusted source hai.
+//   - user_id is always derived from authenticated JWT (req.user.id), not route parameters.
+//   - registration_code is generated securely on the server.
 
 const db = require('../config/db');
 
-// ─── Helper: Unique Registration Code Generate Karna ──────────────────────────
+// ─── Helper: Generate Unique Registration Code ────────────────────────────────
 // Format: EVT-XXXX-XXXX (e.g., EVT-A3F2-K9P1)
-// Math.random().toString(36) → base36 string (digits + letters)
-// .substring(2, 6).toUpperCase() → 4 character slice, uppercase
-// Kyun yeh approach? Simple, readable, no extra library needed.
 const generateRegistrationCode = () => {
     const part1 = Math.random().toString(36).substring(2, 6).toUpperCase();
     const part2 = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -30,17 +26,15 @@ const generateRegistrationCode = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. REGISTER FOR EVENT
 //    Route: POST /api/registrations/:eventId
-//    Access: PARTICIPANT only (protect + authorizeRoles)
+//    Access: PARTICIPANT only
 // ═══════════════════════════════════════════════════════════════════════════════
 const registerForEvent = async (req, res, next) => {
     try {
         const { eventId } = req.params;
-        const user_id = req.user.id;                          // JWT se — trusted source
+        const user_id = req.user.id;
         const { ticket_count = 1, phone_number = null } = req.body;
 
-        // ── 1. Event exist karta hai? Aur kya woh PUBLISHED hai? ──────────────
-        // Sirf PUBLISHED events pe register karna chahiye — DRAFT ya CANCELLED nahi.
-        // price bhi fetch karo taake paid/free determine ho sake
+        // ── 1. Check if event exists and is PUBLISHED ────────────────────────
         const [events] = await db.query(
             'SELECT id, title, capacity, status, price FROM events WHERE id = ?',
             [eventId]
@@ -52,10 +46,7 @@ const registerForEvent = async (req, res, next) => {
 
         const event = events[0];
 
-        // ── Event status check ────────────────────────────────────────────────
-        // CANCELLED events pe registration band hai — DRAFT aur PUBLISHED dono chalte hain.
-        // Kyun DRAFT bhi allow kiya? Organizer preview mode mein test kar sake.
-        // Production mein sirf PUBLISHED check karna chahiye.
+        // ── Verify event is open for registrations ───────────────────────────
         if (event.status === 'CANCELLED') {
             return res.status(400).json({
                 success: false,
@@ -63,15 +54,13 @@ const registerForEvent = async (req, res, next) => {
             });
         }
 
-        // ── 2. Already registered? (Double Registration Check) ────────────────
-        // DB mein UNIQUE KEY already hai, lekin cleaner error message ke liye pehle check karo.
+        // ── 2. Duplicate registration check ──────────────────────────────────
         const [existing] = await db.query(
             'SELECT id, status FROM registrations WHERE user_id = ? AND event_id = ?',
             [user_id, eventId]
         );
 
         if (existing.length > 0) {
-            // Agar pehle cancel kiya tha toh alag message
             const msg = existing[0].status === 'CANCELLED'
                 ? 'You previously cancelled this registration. Please contact support to re-register.'
                 : 'You are already registered for this event.';
@@ -79,8 +68,6 @@ const registerForEvent = async (req, res, next) => {
         }
 
         // ── 3. Capacity Check ─────────────────────────────────────────────────
-        // REGISTERED + CONFIRMED + PENDING dono count karo — sab active registrations hain
-        // CANCELLED exclude karo — woh seats free ho gayi hain
         const [capacityRows] = await db.query(
             `SELECT COALESCE(SUM(ticket_count), 0) as booked 
              FROM registrations 
@@ -105,23 +92,19 @@ const registerForEvent = async (req, res, next) => {
             });
         }
 
-        // ── 4. Paid ya Free? ──────────────────────────────────────────────────
-        // price field: 'Free', '0', null → free event
-        // 'PKR 500', 'PKR 1,500' etc. → paid event
+        // ── 4. Calculate total amount ─────────────────────────────────────────
         const priceStr = event.price || 'Free';
         const isFree = !priceStr || 
                        priceStr.toLowerCase() === 'free' || 
                        priceStr === '0';
 
-        // Paid events ke liye amount parse karo
         let numericPrice = 0;
         if (!isFree) {
             numericPrice = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
         }
         const totalAmount = numericPrice * ticket_count;
 
-        // ── 5. Registration Code Generate Karo ────────────────────────────────
-        // Unique code generate karo — collision ki probability negligible hai lekin check karo
+        // ── 5. Generate unique registration code ─────────────────────────────
         let registration_code;
         let isUnique = false;
 
@@ -134,9 +117,8 @@ const registerForEvent = async (req, res, next) => {
             isUnique = codeCheck.length === 0;
         }
 
-        // ── 6. Registration Save Karo ─────────────────────────────────────────
-        // Paid events → PENDING (payment baad mein → CONFIRMED)
-        // Free events → REGISTERED (directly confirmed)
+        // ── 6. Save registration record ───────────────────────────────────────
+        // Free events are set to REGISTERED directly; paid events are set to PENDING until checkout
         const initialStatus = isFree ? 'REGISTERED' : 'PENDING';
 
         const [result] = await db.query(
@@ -145,7 +127,7 @@ const registerForEvent = async (req, res, next) => {
             [user_id, eventId, ticket_count, phone_number || null, registration_code, initialStatus]
         );
 
-        // Paid events ke liye payment record bhi PENDING mein create karo (audit trail)
+        // Pre-create pending payment record for paid events
         if (!isFree) {
             const txnRef = `T${result.insertId}${Date.now()}`;
             await db.query(
@@ -160,7 +142,7 @@ const registerForEvent = async (req, res, next) => {
             );
         }
 
-        // ── 7. Nai registration fetch karke return karo ───────────────────────
+        // ── 7. Retrieve created registration details ─────────────────────────
         const [newReg] = await db.query(
             `SELECT r.id, r.ticket_count, r.phone_number, r.registration_code,
                     r.status, r.registered_at,
@@ -177,7 +159,6 @@ const registerForEvent = async (req, res, next) => {
                 ? `Successfully registered for "${event.title}"!`
                 : `Registration created! Please complete payment to confirm your spot.`,
             data: newReg[0],
-            // Frontend isko check karega — paid hone par checkout pe redirect karega
             requiresPayment: !isFree,
             amount: totalAmount,
             event_title: event.title
@@ -192,15 +173,14 @@ const registerForEvent = async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 2. CANCEL MY REGISTRATION
 //    Route: PUT /api/registrations/:id/cancel
-//    Access: PARTICIPANT (sirf apni registration cancel kar sakta hai)
+//    Access: PARTICIPANT (users can only cancel their own registrations)
 // ═══════════════════════════════════════════════════════════════════════════════
 const cancelMyRegistration = async (req, res, next) => {
     try {
         const { id } = req.params;
         const user_id = req.user.id;
 
-        // ── Registration dhundo + Ownership check ─────────────────────────────
-        // Kyun ownership check? Koi bhi kisi ka bhi registration ID dal kar cancel na kare.
+        // Verify registration ownership
         const [registrations] = await db.query(
             'SELECT id, user_id, status FROM registrations WHERE id = ?',
             [id]
@@ -212,7 +192,6 @@ const cancelMyRegistration = async (req, res, next) => {
 
         const registration = registrations[0];
 
-        // Ownership: sirf khud ki registration cancel ho sakti hai
         if (registration.user_id !== user_id) {
             return res.status(403).json({
                 success: false,
@@ -220,7 +199,7 @@ const cancelMyRegistration = async (req, res, next) => {
             });
         }
 
-        // Already cancelled? Idempotency check — same action dobara karna harmless hona chahiye
+        // Idempotency check
         if (registration.status === 'CANCELLED') {
             return res.status(400).json({
                 success: false,
@@ -228,8 +207,7 @@ const cancelMyRegistration = async (req, res, next) => {
             });
         }
 
-        // ── Soft Cancel — status update karo, row delete nahi karo ───────────
-        // Kyun soft delete/cancel? History rakhni hai — attendance, analytics ke liye
+        // Soft cancel — preserve historical records by updating status
         await db.query(
             "UPDATE registrations SET status = 'CANCELLED' WHERE id = ?",
             [id]
@@ -249,14 +227,12 @@ const cancelMyRegistration = async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 3. GET MY REGISTRATIONS
 //    Route: GET /api/registrations/my
-//    Access: PARTICIPANT (apni sab registrations dekhe)
+//    Access: PARTICIPANT
 // ═══════════════════════════════════════════════════════════════════════════════
 const getMyRegistrations = async (req, res, next) => {
     try {
         const user_id = req.user.id;
 
-        // JOIN karo events table se taake event details bhi aayein ek hi query mein
-        // DRY: N+1 queries avoid karo — ek JOIN zyada efficient hai
         const [registrations] = await db.query(
             `SELECT 
                 r.id, r.ticket_count, r.phone_number, r.registration_code,
@@ -289,16 +265,12 @@ const getMyRegistrations = async (req, res, next) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 // 4. GET EVENT CAPACITY (Public — no auth required)
 //    Route: GET /api/registrations/event/:eventId/capacity
-//    Access: Public (login zaroorat nahi — capacity info sensitive nahi hai)
-//
-// Kyun alag function? Single Responsibility — sirf capacity info chahiye,
-// puri registration list nahi. Frontend modal isko mount hote hi call karta hai.
+//    Access: Public
 // ═══════════════════════════════════════════════════════════════════════════════
 const getEventCapacity = async (req, res, next) => {
     try {
         const { eventId } = req.params;
 
-        // Event exist karta hai? Capacity bhi nikalo ek hi query mein
         const [events] = await db.query(
             'SELECT id, capacity FROM events WHERE id = ?',
             [eventId]
@@ -308,7 +280,7 @@ const getEventCapacity = async (req, res, next) => {
             return res.status(404).json({ success: false, message: 'Event not found.' });
         }
 
-        // Kitne seats abhi booked hain (CANCELLED registrations count nahi hongi)
+        // Count confirmed/registered seats
         const [capacityRows] = await db.query(
             `SELECT COALESCE(SUM(ticket_count), 0) as booked
              FROM registrations
@@ -322,10 +294,10 @@ const getEventCapacity = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             data: {
-                booked,                        // Abhi kitne seats booked hain
-                total,                         // Event ki total capacity
-                available: total - booked,     // Kitni seats baaki hain
-                isFull: booked >= total        // Event full hai ya nahi
+                booked,
+                total,
+                available: total - booked,
+                isFull: booked >= total
             }
         });
 
@@ -334,7 +306,4 @@ const getEventCapacity = async (req, res, next) => {
     }
 };
 
-
 module.exports = { registerForEvent, cancelMyRegistration, getMyRegistrations, getEventCapacity };
-
-

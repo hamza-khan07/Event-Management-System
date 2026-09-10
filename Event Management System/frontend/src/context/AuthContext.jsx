@@ -1,19 +1,19 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { loginUser, logoutUser, getCurrentUser, registerUser } from '../services/authService';
 
-// Context object banao
+// Initialize context object
 const AuthContext = createContext(null);
 
 /**
- * AuthProvider — Ye poori app ko wrap karta hai.
- * Iske andar koi bhi component useAuth() se user info le sakta hai.
+ * AuthProvider — Root authentication wrapper.
+ * Provides user state and authentication methods via useAuth() hook.
  */
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);          // Current logged-in user
-    const [loading, setLoading] = useState(true);     // App load ho rahi hai check karte hue
+    const [loading, setLoading] = useState(true);     // Session verification loading indicator
 
-    // ── App load hone par check karo kya user already logged in hai ──
-    // Agar valid cookie hai (7 din ke andar) to user ko dobara login nahi karna
+    // ── Check existing session on application mount ──
+    // Checks for a valid session cookie to restore login state automatically
     useEffect(() => {
         const checkSession = async () => {
             try {
@@ -22,10 +22,10 @@ export const AuthProvider = ({ children }) => {
                     setUser(data.user);
                 }
             } catch (error) {
-                // 401 = koi session nahi, that's fine
+                // 401 = No active session
                 setUser(null);
             } finally {
-                setLoading(false);  // Loading done chahe session ho ya na ho
+                setLoading(false);
             }
         };
 
@@ -58,10 +58,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Jo values poori app mein available hongi
+    // Global context value object
     const value = {
         user,
-        isAuthenticated: !!user,   // true agar user object hai, false agar null
+        isAuthenticated: !!user,   // Boolean flag: true if user is logged in
         loading,
         login,
         logout,
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }) => {
 };
 
 /**
- * Custom hook — kisi bhi component mein use karo:
+ * Custom hook for accessing authentication context:
  * const { user, isAuthenticated, login, logout } = useAuth();
  */
 export const useAuth = () => {

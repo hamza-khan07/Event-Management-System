@@ -1,25 +1,19 @@
-
 const db = require('../config/db');
 
 // ─────────────────────────────────────────────────────────────────
-// HELPER: Role validate karne ke liye
-// Kyun: Yeh function baar baar use hoga, isliye alag nikal liya (DRY)
+// HELPER: Validate user role
 // ─────────────────────────────────────────────────────────────────
 const VALID_ROLES = ['ORGANIZER', 'PARTICIPANT'];
 
 // ─────────────────────────────────────────────────────────────────
 // 1. GET USERS BY ROLE (List + Search + Pagination)
 //    Route: GET /api/users?role=ORGANIZER&search=...&page=1&limit=10
-//
-// Kyun role=? query param use kiya?
-// Ek hi function Organizer aur Participant dono handle karta hai.
-// Agar alag alag function banate toh same code do jagah hota — DRY violation.
 // ─────────────────────────────────────────────────────────────────
 const getUsersByRole = async (req, res, next) => {
     try {
         const { role, search = '', page = 1, limit = 10 } = req.query;
 
-        // Role validate karo — sirf ORGANIZER ya PARTICIPANT allowed hai
+        // Role validation — restricted to ORGANIZER or PARTICIPANT
         if (!role || !VALID_ROLES.includes(role)) {
             return res.status(400).json({
                 success: false,
@@ -31,9 +25,7 @@ const getUsersByRole = async (req, res, next) => {
         const limitNum = parseInt(limit);
         const offset = (pageNum - 1) * limitNum;
 
-        // Base query: users table se role ke hisaab se filter karo
-        // Company name bhi chahiye isliye LEFT JOIN lagaya companies table se
-        // LEFT JOIN kyun? — Agar kisi user ka company_id NULL hai toh bhi woh show ho
+        // Base query with LEFT JOIN on companies to include company name if linked
         let baseWhere = 'WHERE u.role = ?';
         const params = [role];
 
@@ -42,7 +34,6 @@ const getUsersByRole = async (req, res, next) => {
             params.push(`%${search}%`, `%${search}%`);
         }
 
-        // Main query: user info + company name (agar linked ho)
         const dataQuery = `
             SELECT 
                 u.id, 
@@ -59,7 +50,6 @@ const getUsersByRole = async (req, res, next) => {
             LIMIT ? OFFSET ?
         `;
 
-        // Count query: pagination ke liye total rows chahiye
         const countQuery = `
             SELECT COUNT(*) as total 
             FROM users u 
@@ -88,17 +78,12 @@ const getUsersByRole = async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────
 // 2. GET SINGLE USER BY ID (Details)
 //    Route: GET /api/users/:id
-//
-// Kyun: PM kisi user par click kare toh drawer mein detail dikhe.
-// Organizer ke liye: uske events bhi dikhayenge (woh events jo us
-// company ne create kiye jisme yeh organizer hai)
-// Participant ke liye: uski registrations dikhayenge
 // ─────────────────────────────────────────────────────────────────
 const getUserById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        // 1. User ki basic info (company name ke saath)
+        // 1. Fetch user profile with associated company name
         const [users] = await db.query(
             `SELECT 
                 u.id, u.name, u.email, u.role, u.status, u.created_at,
@@ -116,28 +101,27 @@ const getUserById = async (req, res, next) => {
         const user = users[0];
         const extraData = {};
 
-        // 2. Role ke hisaab se extra data fetch karo
+        // 2. Fetch role-specific context
         if (user.role === 'ORGANIZER' && user.company_id) {
-            // Organizer ke company ke events
+            // Organizer's company events (all events for this company)
             const [events] = await db.query(
                 `SELECT id, title, event_date, status 
                  FROM events 
                  WHERE company_id = ? 
-                 ORDER BY event_date DESC 
-                 LIMIT 5`,
+                 ORDER BY event_date DESC`,
                 [user.company_id]
             );
             extraData.recentEvents = events;
+            extraData.events = events;
 
         } else if (user.role === 'PARTICIPANT') {
-            // Participant ki registrations (event name ke saath)
+            // Participant's event registrations
             const [registrations] = await db.query(
                 `SELECT r.id, r.status, r.registered_at, e.title AS event_title, e.event_date
                  FROM registrations r
                  JOIN events e ON r.event_id = e.id
                  WHERE r.user_id = ?
-                 ORDER BY r.registered_at DESC
-                 LIMIT 5`,
+                 ORDER BY r.registered_at DESC`,
                 [id]
             );
             extraData.registrations = registrations;
@@ -157,25 +141,19 @@ const getUserById = async (req, res, next) => {
 // 3. UPDATE USER STATUS (Activate / Suspend)
 //    Route: PUT /api/users/:id/status
 //    Body: { status: 'ACTIVE' | 'SUSPENDED' }
-//
-// Kyun: PM chahta hai Organizer ya Participant ko suspend kar sake
-// bina delete kiye — yeh "Soft Control" pattern hai.
-// Yahi pattern Company module mein bhi use kiya tha (DRY).
 // ─────────────────────────────────────────────────────────────────
 const updateUserStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
 
-        // Validation handled by Zod Middleware
-
-        // Pehle check karo ke user exist karta hai
+        // Check if user exists
         const [existing] = await db.query('SELECT id, role FROM users WHERE id = ?', [id]);
         if (existing.length === 0) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        // Sirf ORGANIZER aur PARTICIPANT ko update karo — PM ko protect karo
+        // Only allow status changes for ORGANIZER and PARTICIPANT (protect PM accounts)
         if (!VALID_ROLES.includes(existing[0].role)) {
             return res.status(403).json({
                 success: false,

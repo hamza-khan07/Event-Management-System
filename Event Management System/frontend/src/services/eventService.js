@@ -1,28 +1,25 @@
 // frontend/src/services/eventService.js
 //
-// RESPONSIBILITY: Events ke liye sab API calls ek jagah.
-//
-// DRY: Axios instance wahi configuration use karta hai jo registrationService mein hai.
-// Agar kal ko baseURL change ho, sirf yahan ek jagah change karna hoga.
+// RESPONSIBILITY: Centralized API calls for event resources.
 
 import axios from 'axios';
 
 const api = axios.create({
     baseURL: 'http://localhost:5000/api',
-    withCredentials: true,       // Cookies bhejo — JWT auth ke liye
+    withCredentials: true,       // Send cookies for authentication
     headers: { 'Content-Type': 'application/json' }
 });
 
 // ─── Get All Public Events ────────────────────────────────────────────────────
-// Landing page aur AllEventsPage dono yeh use karte hain.
-// params: { search, category, page, limit } — sab optional
+// Used across LandingPage and AllEventsPage.
+// params: { search, category, page, limit } — all optional
 export const getPublicEvents = async (params = {}) => {
     const response = await api.get('/events/public', { params });
     return response.data;   // { success, data: [...], pagination: {...} }
 };
 
 // ─── Get Single Public Event By ID ───────────────────────────────────────────
-// EventDetailPage ke liye — URL param se ID aata hai
+// Used by EventDetailPage — event ID retrieved from URL route params
 export const getPublicEventById = async (id) => {
     const response = await api.get(`/events/public/${id}`);
     return response.data;   // { success, data: { id, title, ... } }

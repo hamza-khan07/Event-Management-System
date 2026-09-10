@@ -1,8 +1,10 @@
 // src/components/AuthLayout.jsx
 import React from 'react';
 
-// 'children' ek special React prop hai. Jo kuch bhi hum is component ke tags <AuthLayout> ... </AuthLayout>
-// ke darmian likhenge, wo is 'children' variable mein aayega.
+/**
+ * AuthLayout wrapper component.
+ * Provides a unified card layout and branding header for authentication pages (Login, Register).
+ */
 const AuthLayout = ({ title, subtitle, children }) => {
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -13,12 +15,12 @@ const AuthLayout = ({ title, subtitle, children }) => {
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl mb-4">
                         EMS
                     </div>
-                    {/* Dynamic Title aur Subtitle */}
+                    {/* Dynamic Title and Subtitle */}
                     <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
                     <p className="text-gray-500 mt-2">{subtitle}</p>
                 </div>
 
-                {/* Yahan Page ka main content (Form waghaira) render hoga */}
+                {/* Main page content (e.g. form fields) */}
                 {children}
 
             </div>

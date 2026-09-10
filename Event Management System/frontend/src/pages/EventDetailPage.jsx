@@ -25,7 +25,7 @@ import { getPublicEventById } from '../services/eventService';
 // No longer need static ALL_EVENTS as we fetch from API.
 
 // ─── Reusable: Event Info Row ─────────────────────────────────────────────────
-// DRY: Event ki individual details (date, location, etc.) ke liye ek row
+// Reusable row for displaying individual event details (date, location, etc.)
 const InfoRow = ({ icon: Icon, label, value, highlight = false }) => (
     <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
         <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
@@ -42,11 +42,11 @@ const InfoRow = ({ icon: Icon, label, value, highlight = false }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────────────────────────────────────────────────────
 const EventDetailPage = () => {
-    // URL se event ID nikalo — e.g. /events/3 se id = '3'
+    // Extract event ID from URL params (e.g. /events/3 -> id = '3')
     const { id } = useParams();
     const navigate = useNavigate();
 
-    // Auth state: kya user logged in hai?
+    // Auth state: check if user is logged in
     const { isAuthenticated } = useAuth();
 
     // Modal visibility state
@@ -57,7 +57,7 @@ const EventDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
 
-    // ID change hone par event fetch karo
+    // Fetch event when ID changes
     useEffect(() => {
         const fetchEvent = async () => {
             setLoading(true);
@@ -66,7 +66,7 @@ const EventDetailPage = () => {
                 const data = await getPublicEventById(id);
                 setEvent(data.data);
             } catch (err) {
-                // 404 = event nahi mila, baaki koi bhi error
+                // Handle 404 or other fetch errors
                 setNotFound(true);
             } finally {
                 setLoading(false);
@@ -147,21 +147,21 @@ const EventDetailPage = () => {
             <Navbar />
 
             {/* ── 1. FULL-WIDTH COMPANY BANNER ─────────────────────────────── */}
-            {/* User ne kaha: "page k top par full width mein company ka banner" */}
+            {/* Full-width company banner at the top */}
             <div className="relative w-full h-72 sm:h-80 lg:h-96 overflow-hidden ">
-                {/* Banner image — organizer ki company ki branding */}
+                {/* Banner image displaying organizer branding */}
                 <img
                     src={organizer.banner}
                     alt={`${organizer.name} banner`}
                     className="w-full h-full object-cover"
                 />
-                {/* Gradient overlay — text readable banaane ke liye */}
+                {/* Gradient overlay to enhance text contrast and readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-950/85 via-gray-900/50 to-transparent" />
 
 
 
-                {/* ── 2. COMPANY PROFILE SECTION — banner ke upar overlay ────── */}
-                {/* User ne kaha: "company ki profile pic aur neeche company ki details" */}
+                {/* ── 2. COMPANY PROFILE SECTION — overlaid over banner ────── */}
+                {/* Company logo and profile information */}
                 <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 lg:px-16 pb-6">
                     <div className="max-w-6xl mx-auto flex items-end gap-5 flex-wrap">
 
@@ -172,7 +172,7 @@ const EventDetailPage = () => {
                                 alt={`${organizer.name} logo`}
                                 className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-4 border-white shadow-xl"
                             />
-                            {/* Verified badge — company verified hone ki nishani */}
+                            {/* Verified badge */}
                             <div className="absolute -bottom-1.5 -right-1.5 bg-indigo-600 rounded-full p-1 border-2 border-white">
                                 <BadgeCheck size={14} className="text-white" />
                             </div>
@@ -195,7 +195,7 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── 3. COMPANY EXTRA DETAILS BAR ────────────────────────────── */}
-            {/* Company ki website aur description — banner ke theek neeche */}
+            {/* Company website and description below banner */}
             <div className="bg-white border-b border-gray-100 shadow-sm">
                 <div className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-16 py-4 flex items-center gap-6 flex-wrap">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -251,7 +251,7 @@ const EventDetailPage = () => {
                     </div>
 
                     {/* ── RIGHT: Event Details Card + Registration Button ─────── */}
-                    {/* User ne kaha: "registration ka button hona chahiye" */}
+                    {/* Event Details Card & Registration CTA */}
                     <div className="space-y-5">
 
                         {/* Event Details Card */}
@@ -260,7 +260,7 @@ const EventDetailPage = () => {
                                 Event Details
                             </h3>
 
-                            {/* DRY: InfoRow component se sab details — duplicate code nahi */}
+                            {/* DRY: InfoRow component renders all detail items */}
                             <InfoRow icon={Calendar} label="Date" value={date} />
                             <InfoRow icon={Clock} label="Time" value={time} />
                             <InfoRow icon={MapPin} label="Location" value={location} />
@@ -270,10 +270,8 @@ const EventDetailPage = () => {
 
                         {/* ── REGISTRATION BUTTON ─────────────────────────────── */}
                         {/* Behavior:
-                            - Logged out → Login pe redirect (with return URL)
-                            - Logged in → Modal kholo
-                            Kyun button aur Link nahi? Button onClick se logic handle hota hai,
-                            Link sirf static navigation ke liye hai. */}
+                            - Logged out → Redirect to login (with return URL)
+                            - Logged in → Open registration modal */}
                         <button
                             onClick={handleRegisterClick}
                             className="block w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-base rounded-2xl text-center shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200 cursor-pointer"
@@ -308,8 +306,7 @@ const EventDetailPage = () => {
             <Footer />
 
             {/* ── REGISTRATION MODAL ────────────────────────────────────────── */}
-            {/* Conditional render: sirf jab showModal true ho tab mount karo */}
-            {/* Kyun conditional? Jab modal nahi dikhna tab DOM mein hona zaroorat nahi — performance */}
+            {/* Conditional render: mount modal only when showModal is true */}
             {showModal && (
                 <RegistrationModal
                     event={{ id, title, price, capacity }}

@@ -4,9 +4,7 @@ const db = require('../config/db');
 // ─────────────────────────────────────────────
 // 1. GET ALL COMPANIES (with Search + Pagination)
 // ─────────────────────────────────────────────
-// Kyun: PM ko saari companies ek table mein dekhni hain.
-// Search aur pagination isliye ke data zyada hone par bhi
-// page hang na ho (performance best practice).
+// Displays companies in a table with search and pagination for performance.
 const getAllCompanies = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -14,7 +12,7 @@ const getAllCompanies = async (req, res, next) => {
         const search = req.query.search || '';
         const offset = (page - 1) * limit;
 
-        // Flexible query: search hoga to WHERE clause lagega, nahi to nahi lagega
+        // Dynamic query: Append WHERE clause if search query is provided
         let query = 'SELECT * FROM companies WHERE 1=1';
         let countQuery = 'SELECT COUNT(*) as total FROM companies WHERE 1=1';
         const params = [];
@@ -48,19 +46,18 @@ const getAllCompanies = async (req, res, next) => {
 // ─────────────────────────────────────────────
 // 2. GET SINGLE COMPANY (with its Organizers)
 // ─────────────────────────────────────────────
-// Kyun: PM kisi ek company par click kare to uski poori
-// details aur us se linked organizers dikhayi jayein (JOIN query).
+// Retrieves full company profile details and linked organizers.
 const getCompanyById = async (req, res, next) => {
     try {
         const { id } = req.params;
 
-        // 1. Company ki basic detail
+        // 1. Basic company details
         const [companies] = await db.query('SELECT * FROM companies WHERE id = ?', [id]);
         if (companies.length === 0) {
             return res.status(404).json({ success: false, message: 'Company not found' });
         }
 
-        // 2. Us company se linked organizers
+        // 2. Organizers linked to this company
         const [organizers] = await db.query(
             `SELECT u.id, u.name, u.email, u.status 
              FROM users u 
@@ -68,8 +65,7 @@ const getCompanyById = async (req, res, next) => {
             [id]
         );
 
-        // 3. [NEW] Us company ke total events ka count
-        // COUNT(*) ek aggregate function hai jo rows ki ginti karta hai
+        // 3. Total events count for this company
         const [eventCount] = await db.query(
             `SELECT COUNT(*) as total FROM events WHERE company_id = ?`,
             [id]
@@ -80,7 +76,7 @@ const getCompanyById = async (req, res, next) => {
             data: {
                 ...companies[0],
                 organizers,
-                totalEvents: eventCount[0].total  // [NEW] Event count add kiya
+                totalEvents: eventCount[0].total
             }
         });
     } catch (error) {
@@ -92,14 +88,11 @@ const getCompanyById = async (req, res, next) => {
 // ─────────────────────────────────────────────
 // 3. UPDATE COMPANY STATUS (Activate / Suspend)
 // ─────────────────────────────────────────────
-// Kyun: PM chahta hai ke kisi company ko bina delete kiye
-// temporarily band kar sake. Yeh "Soft Control" hai.
+// Soft control: Allows Product Manager to suspend or reactivate a company without deleting records.
 const updateCompanyStatus = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { status } = req.body; // 'ACTIVE' ya 'SUSPENDED'
-
-        // Validation will be handled by Zod Middleware
+        const { status } = req.body; // 'ACTIVE' or 'SUSPENDED'
 
         await db.query('UPDATE companies SET status = ? WHERE id = ?', [status, id]);
 
@@ -162,14 +155,13 @@ const createCompany = async (req, res, next) => {
 // ─────────────────────────────────────────────
 // 5. UPDATE COMPANY INFO (name, email, phone, description, address, website, logo, banner, tagline)
 // ─────────────────────────────────────────────
-// Kyun: PM company ki info galat ho ya update karni ho to
-// woh drawer se seedha edit kar sake — bina delete/recreate ke.
+// Allows in-place editing of company information without modifying its status.
 const updateCompany = async (req, res, next) => {
     try {
         const { id } = req.params;
         const { name, description, email, phone, address, website, logo, banner, tagline } = req.body;
 
-        // UPDATE query — sirf info fields update hongi, status touch nahi hoga
+        // Update company profile attributes
         await db.query(
             'UPDATE companies SET name=?, description=?, email=?, phone=?, address=?, website=?, logo=?, banner=?, tagline=?, updated_at=NOW() WHERE id=?',
             [
@@ -195,35 +187,30 @@ const updateCompany = async (req, res, next) => {
 // ─────────────────────────────────────────────
 // 6. ADD ORGANIZER TO A COMPANY
 // ─────────────────────────────────────────────
-// Kyun: PM kisi company ke drawer se seedha ek nayi organizer
-// account bana sake aur use us company se link kar sake.
-// bcrypt isliye use ho raha hai kyunke password plain text mein
-// DB mein nahi rehna chahiye — yeh security ka basic rule hai.
+// Allows the Product Manager to create and link a new organizer account directly to a company.
 const bcrypt = require('bcryptjs');
 
 const addOrganizer = async (req, res, next) => {
     try {
-        const { id: companyId } = req.params;               // URL se company ka id
+        const { id: companyId } = req.params;               // Company ID from URL parameters
         const { name, email, password } = req.body;
 
-        // --- Zod validation will handle the basic checks ---
-
-        // --- Company exist karti hai? ---
+        // --- Verify company exists ---
         const [companies] = await db.query('SELECT id FROM companies WHERE id = ?', [companyId]);
         if (companies.length === 0) {
-            return res.status(404).json({ success: false, message: 'Company nahi mili' });
+            return res.status(404).json({ success: false, message: 'Company not found' });
         }
 
         // --- Duplicate email check ---
         const [existing] = await db.query('SELECT id FROM users WHERE email = ?', [email.trim()]);
         if (existing.length > 0) {
-            return res.status(409).json({ success: false, message: 'Yeh email pehle se registered hai' });
+            return res.status(409).json({ success: false, message: 'This email is already registered' });
         }
 
-        // --- Password hash karo ---
+        // --- Hash password ---
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // --- User insert karo —  role=ORGANIZER, company_id linked ---
+        // --- Insert organizer user record linked to company ---
         const [result] = await db.query(
             'INSERT INTO users (company_id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)',
             [companyId, name.trim(), email.trim(), hashedPassword, 'ORGANIZER', 'ACTIVE']
@@ -231,7 +218,7 @@ const addOrganizer = async (req, res, next) => {
 
         res.status(201).json({
             success: true,
-            message: 'Organizer successfully create ho gaya',
+            message: 'Organizer created successfully',
             data: { id: result.insertId, name: name.trim(), email: email.trim(), status: 'ACTIVE' }
         });
     } catch (error) {
@@ -240,4 +227,3 @@ const addOrganizer = async (req, res, next) => {
 };
 
 module.exports = { getAllCompanies, getCompanyById, updateCompanyStatus, createCompany, updateCompany, addOrganizer };
-

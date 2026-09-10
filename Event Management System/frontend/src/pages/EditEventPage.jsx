@@ -13,7 +13,7 @@ const EditEventPage = () => {
     const eventData = location.state?.event;
 
     useEffect(() => {
-        if (!eventData) navigate('/organizer/events'); // Refresh pe wapas bhejo
+        if (!eventData) navigate('/organizer/events'); // Redirect back if state is missing on refresh
     }, [eventData, navigate]);
 
     return (

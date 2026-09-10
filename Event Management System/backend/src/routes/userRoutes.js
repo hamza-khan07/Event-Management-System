@@ -7,11 +7,11 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const validate = require('../middleware/validateMiddleware');
 const { updateCompanyStatusSchema } = require('../validations/companyValidation'); // Reuse status schema
 
-// Tamam user routes sirf PM ke liye protected hain
-// GET  /api/users?role=ORGANIZER   → organizer list (search + pagination)
-// GET  /api/users?role=PARTICIPANT → participant list
-// GET  /api/users/:id              → single user detail
-// PUT  /api/users/:id/status       → status update
+// All user management routes are restricted to PRODUCT_MANAGER
+// GET  /api/users?role=ORGANIZER   → List organizers (with search + pagination)
+// GET  /api/users?role=PARTICIPANT → List participants
+// GET  /api/users/:id              → Get single user details
+// PUT  /api/users/:id/status       → Update user status (ACTIVE / SUSPENDED)
 
 router.get('/', protect, authorizeRoles('PRODUCT_MANAGER'), getUsersByRole);
 router.get('/:id', protect, authorizeRoles('PRODUCT_MANAGER'), getUserById);

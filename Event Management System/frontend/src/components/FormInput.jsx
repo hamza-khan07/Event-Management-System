@@ -1,7 +1,9 @@
 // src/components/FormInput.jsx
 import React from 'react';
 
-// Props (parameters) receive kar rahe hain taake har input apni marzi ka data le sake
+/**
+ * Reusable form input component with label, styled input, and error states.
+ */
 const FormInput = ({ label, type, name, placeholder, value, onChange, disabled }) => {
     return (
         <div>

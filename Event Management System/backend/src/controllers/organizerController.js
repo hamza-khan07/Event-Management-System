@@ -3,17 +3,9 @@
 const db = require('../config/db');
 
 // ─────────────────────────────────────────────────────────────────
-// SECURITY HELPER: Organizer apni company ka owner hai ya nahi?
-//
-// Kyun alag helper function?
-// Yeh check MULTIPLE jagah chahiye (getMyCompany, updateMyCompany).
-// Agar alag na nikale toh same check baar baar likhna padta — DRY violation.
-//
-// req.user.company_id → JWT token se aata hai (authMiddleware ne attach kiya)
-// companyId           → URL params se aata hai
+// SECURITY HELPER: Check if organizer owns the target company
 // ─────────────────────────────────────────────────────────────────
 const isOrganizerOwner = (req, companyId) => {
-    // parseInt isliye: params se string aata hai, company_id number hai
     return req.user.company_id === parseInt(companyId);
 };
 
@@ -21,18 +13,11 @@ const isOrganizerOwner = (req, companyId) => {
 // ─────────────────────────────────────────────────────────────────
 // 1. GET MY COMPANY
 //    Route: GET /api/organizer/my-company
-//
-// Kyun /my-company route?
-// Organizer ko company ID URL mein type nahi karni chahiye.
-// Woh apne JWT token se automatically identify ho jata hai.
-// req.user.company_id → authMiddleware ne JWT se nikal kar attach kiya.
 // ─────────────────────────────────────────────────────────────────
 const getMyCompany = async (req, res, next) => {
     try {
-        // JWT token mein company_id store hai (login ke waqt set hua tha)
         const company_id = req.user.company_id;
 
-        // Agar organizer ka koi company link nahi — edge case handle karo
         if (!company_id) {
             return res.status(404).json({
                 success: false,
@@ -40,7 +25,7 @@ const getMyCompany = async (req, res, next) => {
             });
         }
 
-        // Company ki info fetch karo
+        // Fetch company profile details
         const [companies] = await db.query(
             'SELECT id, name, description, email, phone, website, address, logo, banner, tagline, status, created_at FROM companies WHERE id = ?',
             [company_id]
@@ -53,7 +38,7 @@ const getMyCompany = async (req, res, next) => {
             });
         }
 
-        // Us company ke linked organizers bhi fetch karo (team members dekhne ke liye)
+        // Fetch organizers linked to this company
         const [organizers] = await db.query(
             `SELECT id, name, email, status 
              FROM users 
@@ -65,7 +50,7 @@ const getMyCompany = async (req, res, next) => {
             success: true,
             data: {
                 ...companies[0],
-                organizers // Company ka poora team
+                organizers
             }
         });
 
@@ -78,13 +63,6 @@ const getMyCompany = async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────
 // 2. UPDATE MY COMPANY
 //    Route: PUT /api/organizer/my-company
-//
-// Kyun ownership check zaroori hai?
-// URL mein koi ID nahi hai — Organizer sirf apni company update kare.
-// JWT ke company_id se directly update karte hain — safe!
-//
-// Kya update ho sakta hai? — name, description, email, phone, website, address, logo, banner, tagline
-// Kya update NAHI ho sakta? — status (sirf PM status change karta hai)
 // ─────────────────────────────────────────────────────────────────
 const updateMyCompany = async (req, res, next) => {
     try {
@@ -99,7 +77,7 @@ const updateMyCompany = async (req, res, next) => {
 
         const { name, description, email, phone, website, address, logo, banner, tagline } = req.body;
 
-        // Update karo — sirf apni company (company_id JWT se aaya, URL se nahi)
+        // Update company profile details (status cannot be altered by organizers)
         await db.query(
             `UPDATE companies 
              SET name = ?, description = ?, email = ?, phone = ?, website = ?, address = ?, logo = ?, banner = ?, tagline = ?
@@ -118,7 +96,7 @@ const updateMyCompany = async (req, res, next) => {
             ]
         );
 
-        // Updated company wapis bhejo
+        // Fetch updated record
         const [updated] = await db.query(
             'SELECT id, name, description, email, phone, website, address, logo, banner, tagline, status FROM companies WHERE id = ?',
             [company_id]
@@ -136,19 +114,9 @@ const updateMyCompany = async (req, res, next) => {
 };
 
 
-
 // ─────────────────────────────────────────────────────────────────
 // 4. GET OVERVIEW STATS (Organizer Dashboard Analytics)
 //    Route: GET /api/organizer/overview-stats
-//
-// Kyun: OrganizerDashboardPage ko 4 stat cards + chart data chahiye.
-// Sab kuch ek API call mein bhejte hain (performance: ek trip to server).
-//
-// Jo data bhejenge:
-//   summary           → 4 stat card numbers
-//   registrationTrend → Line chart data (last 6 months)
-//   eventsByStatus    → Pie/donut chart data
-//   recentEvents      → Table mein last 5 events
 // ─────────────────────────────────────────────────────────────────
 const getOrganizerOverviewStats = async (req, res, next) => {
     try {
@@ -161,12 +129,8 @@ const getOrganizerOverviewStats = async (req, res, next) => {
             });
         }
 
-        // ── 1. SUMMARY NUMBERS ───────────────────────────────────────
-        // Kyun alag alag queries?
-        // Ek complex query mein sab karna mushkil aur debug karna aur bhi mushkil hota.
-        // Alag queries → readable, maintainable.
-
-        // Total events of this company
+        // ── 1. Summary Metrics ───────────────────────────────────────
+        // Total events for this company
         const [totalEventsRows] = await db.query(
             'SELECT COUNT(*) as count FROM events WHERE company_id = ?',
             [company_id]
@@ -181,22 +145,20 @@ const getOrganizerOverviewStats = async (req, res, next) => {
             [company_id]
         );
 
-        // Total capacity of all events
+        // Total capacity across company events
         const [capacityRows] = await db.query(
             'SELECT COALESCE(SUM(capacity), 0) as total FROM events WHERE company_id = ?',
             [company_id]
         );
 
-        // Upcoming events (future date, not cancelled)
+        // Upcoming active events
         const [upcomingRows] = await db.query(
             `SELECT COUNT(*) as count FROM events 
              WHERE company_id = ? AND event_date >= CURDATE() AND status != 'CANCELLED'`,
             [company_id]
         );
 
-        // ── 2. REGISTRATION TREND (Last 6 months) ────────────────────
-        // DATE_FORMAT: MySQL ka function jo date ko 'Jan 2025' jaisi string mein badalta hai
-        // MONTH() / YEAR() se last 6 months filter karte hain
+        // ── 2. Registration Trend (Last 6 Months) ────────────────────
         const [trendRows] = await db.query(
             `SELECT 
                 DATE_FORMAT(r.registered_at, '%b %Y') as month,
@@ -210,7 +172,7 @@ const getOrganizerOverviewStats = async (req, res, next) => {
             [company_id]
         );
 
-        // ── 3. EVENTS BY STATUS (Pie chart) ──────────────────────────
+        // ── 3. Events by Status (Pie/Donut chart) ─────────────────────
         const [statusRows] = await db.query(
             `SELECT status, COUNT(*) as count 
              FROM events 
@@ -219,9 +181,7 @@ const getOrganizerOverviewStats = async (req, res, next) => {
             [company_id]
         );
 
-        // ── 4. RECENT EVENTS TABLE (last 5) ──────────────────────────
-        // Fill rate = registrations / capacity * 100
-        // COALESCE: agar NULL aaye to 0 use karo (koi registration nahi)
+        // ── 4. Recent Events (Top 5) ─────────────────────────────────
         const [recentRows] = await db.query(
             `SELECT 
                 e.id,
@@ -265,22 +225,9 @@ const getOrganizerOverviewStats = async (req, res, next) => {
 };
 
 
-
 // ─────────────────────────────────────────────────────────────────
 // 5. GET MY PARTICIPANTS
 //    Route: GET /api/organizer/my-participants
-//
-// Kyun: Organizer dekhna chahta hai k kaunse users ne us company ke
-// events mein register kiya hua hai.
-//
-// Query Params:
-//   search  → participant name ya email se filter
-//   eventId → specific event ke participants (optional)
-//   status  → REGISTERED ya CANCELLED ya '' (sab)
-//   page, limit → pagination
-//
-// Security: company_id hamesha JWT se — URL se nahi.
-// Isse organizer sirf apni company ke events ke participants dekhega.
 // ─────────────────────────────────────────────────────────────────
 const getMyParticipants = async (req, res, next) => {
     try {
@@ -293,7 +240,7 @@ const getMyParticipants = async (req, res, next) => {
             });
         }
 
-        // Query params parse karo
+        // Parse query parameters
         const search  = req.query.search  || '';
         const eventId = req.query.eventId || '';
         const status  = req.query.status  || '';
@@ -302,23 +249,22 @@ const getMyParticipants = async (req, res, next) => {
         const offset   = (pageNum - 1) * limitNum;
 
         // ── Dynamic WHERE clause ──────────────────────────────────
-        // Base condition: sirf is company ke events ke participants
         const conditions = ['e.company_id = ?'];
         const params     = [company_id];
 
-        // Optional: specific event filter
+        // Optional: Filter by event
         if (eventId) {
             conditions.push('r.event_id = ?');
             params.push(parseInt(eventId));
         }
 
-        // Optional: registration status filter
+        // Optional: Filter by registration status
         if (status) {
             conditions.push('r.status = ?');
             params.push(status);
         }
 
-        // Optional: search by name or email
+        // Optional: Search by name or email
         if (search) {
             conditions.push('(u.name LIKE ? OR u.email LIKE ?)');
             params.push(`%${search}%`, `%${search}%`);
@@ -326,7 +272,7 @@ const getMyParticipants = async (req, res, next) => {
 
         const whereClause = conditions.join(' AND ');
 
-        // ── Total count (for pagination) ──────────────────────────
+        // ── Total count for pagination ────────────────────────────
         const [countRows] = await db.query(
             `SELECT COUNT(*) as total
              FROM registrations r
@@ -337,7 +283,7 @@ const getMyParticipants = async (req, res, next) => {
         );
         const total = countRows[0].total;
 
-        // ── Participants data ─────────────────────────────────────
+        // ── Paginated participants data ───────────────────────────
         const [participants] = await db.query(
             `SELECT
                 r.id                AS registration_id,
@@ -361,8 +307,7 @@ const getMyParticipants = async (req, res, next) => {
             [...params, limitNum, offset]
         );
 
-        // ── Events dropdown list (for filter UI) ─────────────────
-        // Organizer ke sabhi events (sab statuses) — filter dropdown ke liye
+        // ── Events dropdown list for filters ──────────────────────
         const [eventsList] = await db.query(
             `SELECT id, title, event_date, status
              FROM events
@@ -387,6 +332,5 @@ const getMyParticipants = async (req, res, next) => {
         next(error);
     }
 };
-
 
 module.exports = { getMyCompany, updateMyCompany, getOrganizerOverviewStats, getMyParticipants };

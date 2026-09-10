@@ -19,7 +19,7 @@ const LoginPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // ... (Aapki logic same rahegi) ...
+        // Validate and submit credentials
         setError('');
         if (!formData.email.trim() || !formData.password.trim()) {
             setError('Please fill in all fields.'); return;
@@ -28,7 +28,7 @@ const LoginPage = () => {
         try {
             const result = await login(formData.email, formData.password);
             if (result.success) {
-                // Role ke hisaab se sahi dashboard pe redirect karein
+                // Redirect to appropriate dashboard based on user role
                 if (result.user.role === 'PRODUCT_MANAGER') {
                     navigate('/dashboard');
                 } else if (result.user.role === 'ORGANIZER') {
@@ -46,7 +46,7 @@ const LoginPage = () => {
     };
 
     return (
-        // Wrapper use kiya aur props pass kiye
+        // Auth layout wrapper with page titles
         <AuthLayout title="Welcome Back" subtitle="Sign in to your account">
 
             {error && (
@@ -56,7 +56,7 @@ const LoginPage = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-                {/* Kitna clean ho gaya! */}
+                {/* Form inputs */}
                 <FormInput
                     label="Email Address"
                     type="email"

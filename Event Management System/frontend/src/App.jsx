@@ -46,7 +46,7 @@ function App() {
       {/* Public: All Events page */}
       <Route path="/events" element={<AllEventsPage />} />
 
-      {/* Public: Single Event Detail page — :id se event dhundhta hai */}
+      {/* Public: Single Event Detail page — fetches event by :id */}
 
       <Route path="/events/:id" element={<EventDetailPage />} />
 

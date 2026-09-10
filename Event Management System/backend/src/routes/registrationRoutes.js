@@ -1,12 +1,12 @@
 // backend/src/routes/registrationRoutes.js
 //
-// RESPONSIBILITY: Registration ke sab HTTP routes define karo.
+// RESPONSIBILITY: Define HTTP routes for event registrations.
 //
 // Middleware chain (left to right):
-//   protect        → kya user logged in hai? (JWT check)
-//   authorizeRoles → kya user ka role allowed hai?
-//   validate       → kya request body valid hai? (Zod schema)
-//   controller     → actual business logic
+//   protect        → Verify user session (JWT authentication)
+//   authorizeRoles → Ensure user role is permitted
+//   validate       → Validate request body against Zod schema
+//   controller     → Execute business logic
 
 const express = require('express');
 const router = express.Router();
@@ -18,14 +18,14 @@ const {
     registerForEvent,
     cancelMyRegistration,
     getMyRegistrations,
-    getEventCapacity        // public: registered count + total capacity
+    getEventCapacity
 } = require('../controllers/registrationController');
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // POST /api/registrations/:eventId
-// → Ek event ke liye register karo
-// → Sirf PARTICIPANT role allowed hai (ORGANIZER apne hi event pe register nahi karta)
+// → Register for an event
+// → Restricted to PARTICIPANT role
 router.post(
     '/:eventId',
     protect,
@@ -35,10 +35,8 @@ router.post(
 );
 
 // GET /api/registrations/my
-// → Apni sab registrations dekho
-// IMPORTANT: Yeh route '/:eventId' se PEHLE likhna zaroori hai.
-// Kyun? Express top-to-bottom match karta hai — agar /:eventId pehle hota toh
-// "my" ko bhi eventId samajh leta aur galat controller chalta.
+// → View current user's registrations
+// NOTE: Defined before '/:eventId' to avoid path collision
 router.get(
     '/my',
     protect,
@@ -47,13 +45,12 @@ router.get(
 );
 
 // GET /api/registrations/event/:eventId/capacity
-// → Event ki current capacity info (public — login nahi chahiye)
-// → Frontend modal mein "X / Y registered" dikhane ke liye
-// Kyun public? Capacity info sensitive nahi hai — koi bhi event detail page dekh sakta hai
+// → Get current registration count and capacity (public - no auth required)
+// → Used by event modal to display "X / Y registered"
 router.get('/event/:eventId/capacity', getEventCapacity);
 
 // PUT /api/registrations/:id/cancel
-// → Apni registration cancel karo (soft cancel — status = CANCELLED)
+// → Cancel user registration (soft cancellation setting status = CANCELLED)
 router.put(
     '/:id/cancel',
     protect,

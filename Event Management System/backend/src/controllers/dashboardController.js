@@ -2,17 +2,19 @@ const db = require('../config/db');
 
 const getPMStats = async (req, res, next) => {
     try {
-        // Basic Stats
+        // Basic Stats (Organizers and Participants counted separately, excluding PRODUCT_MANAGER)
         const [companies] = await db.query('SELECT COUNT(*) as total FROM companies');
         const [organizers] = await db.query('SELECT COUNT(*) as total FROM users WHERE role = ?', ['ORGANIZER']);
         const [participants] = await db.query('SELECT COUNT(*) as total FROM users WHERE role = ?', ['PARTICIPANT']);
         const [events] = await db.query('SELECT COUNT(*) as total FROM events');
 
-        // Growth Data (Users vs Events for last 6 months)
+        // Growth Data (Organizers, Participants & Events for last 6 months - excludes PRODUCT_MANAGER)
         const [growthDataRaw] = await db.query(`
             SELECT 
                 DATE_FORMAT(months.m, '%b') as name,
-                COALESCE(u.users, 0) as users,
+                COALESCE(o.organizers, 0) as organizers,
+                COALESCE(p.participants, 0) as participants,
+                (COALESCE(o.organizers, 0) + COALESCE(p.participants, 0)) as users,
                 COALESCE(e.events, 0) as events
             FROM (
                 SELECT DATE_SUB(CURRENT_DATE, INTERVAL 5 MONTH) AS m UNION ALL
@@ -23,10 +25,17 @@ const getPMStats = async (req, res, next) => {
                 SELECT CURRENT_DATE
             ) as months
             LEFT JOIN (
-                SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as users 
+                SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as organizers 
                 FROM users 
+                WHERE role = 'ORGANIZER'
                 GROUP BY month
-            ) u ON DATE_FORMAT(months.m, '%Y-%m') = u.month
+            ) o ON DATE_FORMAT(months.m, '%Y-%m') = o.month
+            LEFT JOIN (
+                SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as participants 
+                FROM users 
+                WHERE role = 'PARTICIPANT'
+                GROUP BY month
+            ) p ON DATE_FORMAT(months.m, '%Y-%m') = p.month
             LEFT JOIN (
                 SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as events 
                 FROM events 

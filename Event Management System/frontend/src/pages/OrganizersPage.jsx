@@ -25,13 +25,13 @@ const OrganizersPage = () => {
         navigate('/login');
     };
 
-    // Search, page, ya limit change hote hi data dobara fetch karo
+    // Refetch data whenever search, page, or limit changes
     useEffect(() => {
         fetchOrganizers(search, pagination.currentPage, limit);
     }, [search, pagination.currentPage, limit]);
 
-    // ─── API: Organizer list fetch ────────────────────────────────
-    // role=ORGANIZER query param pass kar rahe hain — same endpoint dono pages use karenge
+    // ─── API: Fetch organizer list ────────────────────────────────
+    // Passing role=ORGANIZER query param — same endpoint used by both pages
     const fetchOrganizers = async (searchTerm = '', page = 1, currentLimit = 10) => {
         setLoading(true);
         try {
@@ -61,7 +61,7 @@ const OrganizersPage = () => {
                 { status: newStatus },
                 { withCredentials: true }
             );
-            // Local state update karo (page reload ki zaroorat nahi)
+            // Update local state without needing a page reload
             setOrganizers(prev =>
                 prev.map(o => o.id === userId ? { ...o, status: newStatus } : o)
             );
@@ -160,7 +160,7 @@ const OrganizersPage = () => {
                                     >
                                         <td className="p-4 text-sm font-medium text-gray-900">{org.name}</td>
                                         <td className="p-4 text-sm text-gray-500">{org.email}</td>
-                                        {/* Company name: LEFT JOIN se aaya hai backend mein */}
+                                        {/* Company name: Retrieved via LEFT JOIN in backend */}
                                         <td className="p-4 text-sm text-gray-500">{org.company_name || '—'}</td>
                                         <td className="p-4">
                                             <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full ${org.status === 'ACTIVE'
@@ -173,7 +173,7 @@ const OrganizersPage = () => {
                                         <td className="p-4 text-right">
                                             <button
                                                 onClick={(e) => {
-                                                    e.stopPropagation(); // Row click rok do, sirf button kaam kare
+                                                    e.stopPropagation(); // Prevent triggering row click, only run button action
                                                     handleStatusChange(org.id, org.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
                                                 }}
                                                 className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${org.status === 'ACTIVE'
@@ -215,7 +215,7 @@ const OrganizersPage = () => {
                 </div>
             </main>
 
-            {/* Reusable Drawer — Company drawer se bilkul same component */}
+            {/* Reusable Drawer component */}
             <Drawer
                 isOpen={drawerOpen}
                 onClose={closeDrawer}
@@ -269,18 +269,18 @@ const OrganizersPage = () => {
                             </div>
                         </div>
 
-                        {/* Recent Events Section */}
+                        {/* Events Section */}
                         <div>
                             <h3 className="text-xs uppercase tracking-wider text-gray-400 font-semibold mb-3">
-                                Recent Events ({selectedOrganizer.recentEvents?.length || 0})
+                                Events ({selectedOrganizer.events?.length || selectedOrganizer.recentEvents?.length || 0})
                             </h3>
-                            {(!selectedOrganizer.recentEvents || selectedOrganizer.recentEvents.length === 0) ? (
+                            {(!(selectedOrganizer.events || selectedOrganizer.recentEvents) || (selectedOrganizer.events || selectedOrganizer.recentEvents).length === 0) ? (
                                 <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-dashed border-gray-200">
                                     No events found for this company.
                                 </p>
                             ) : (
                                 <div className="space-y-2">
-                                    {selectedOrganizer.recentEvents.map((event) => (
+                                    {(selectedOrganizer.events || selectedOrganizer.recentEvents).map((event) => (
                                         <div key={event.id} className="p-3 bg-slate-50 border border-gray-100 rounded-lg">
                                             <p className="text-sm font-medium text-gray-900">{event.title}</p>
                                             <div className="flex items-center justify-between mt-1">

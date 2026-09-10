@@ -49,7 +49,6 @@ const RegisterPage = () => {
     };
 
     return (
-        // AuthLayout use kar ke title aur subtitle pass kar diye
         <AuthLayout title="Create Account" subtitle="Join as a Participant">
 
             {error && (
@@ -64,7 +63,6 @@ const RegisterPage = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                {/* 4 lambe HTML inputs ki jagah ab sirf ye 4 lines */}
                 <FormInput
                     label="Full Name"
                     type="text"

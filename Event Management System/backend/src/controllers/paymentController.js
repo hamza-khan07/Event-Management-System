@@ -1,13 +1,16 @@
 // backend/src/controllers/paymentController.js
 //
-// RESPONSIBILITY: JazzCash payment ka complete lifecycle manage karna.
+// RESPONSIBILITY: Manage the complete lifecycle of payment transactions.
 //
 // Functions:
 //   1. createJazzCashPayment → POST /api/payments/jazzcash/create
-//      Frontend se call hoti hai → JazzCash form data return karo
+//      Called by frontend → returns JazzCash form data
 //
 //   2. jazzCashReturn → POST /api/payments/jazzcash/return
-//      JazzCash is URL par POST karta hai → result verify karo → DB update karo
+//      Callback URL for JazzCash → verifies payload signature → updates DB
+//
+//   3. processMockPayment → POST /api/payments/mock/process
+//      Simulated payment gateway for local development and testing
 
 const db = require('../config/db');
 const { createJazzCashPaymentData } = require('../services/jazzcashService');
@@ -16,13 +19,13 @@ const { generateJazzCashHash } = require('../utils/jazzcashHash');
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. CREATE JAZZCASH PAYMENT
 //    Route:  POST /api/payments/jazzcash/create
-//    Access: PARTICIPANT (protect middleware se guard karo route mein)
+//    Access: PARTICIPANT (protected route)
 //    Body:   { registration_id }
 // ═══════════════════════════════════════════════════════════════════════════════
 const createJazzCashPayment = async (req, res, next) => {
     try {
         const { registration_id } = req.body;
-        const user_id = req.user.id; // JWT se — trusted
+        const user_id = req.user.id; // Trusted ID from JWT payload
 
         if (!registration_id) {
             return res.status(400).json({
@@ -31,8 +34,7 @@ const createJazzCashPayment = async (req, res, next) => {
             });
         }
 
-        // ── 1. Registration + Event data fetch karo ──────────────────────────
-        // JOIN karo taake event title, price, aur phone number ek query mein mile
+        // ── 1. Fetch registration & event data ──────────────────────────────
         const [rows] = await db.query(
             `SELECT 
                 r.id, r.user_id, r.status, r.ticket_count, r.phone_number,
@@ -55,7 +57,6 @@ const createJazzCashPayment = async (req, res, next) => {
         const registration = rows[0];
 
         // ── 2. Ownership check ───────────────────────────────────────────────
-        // Sirf khud ki registration ka payment ho — dusre ka nahi
         if (registration.user_id !== user_id) {
             return res.status(403).json({
                 success: false,
@@ -63,7 +64,7 @@ const createJazzCashPayment = async (req, res, next) => {
             });
         }
 
-        // ── 3. Already paid check ────────────────────────────────────────────
+        // ── 3. Check if already paid ─────────────────────────────────────────
         const [existingPayment] = await db.query(
             `SELECT id, status FROM payments WHERE registration_id = ?`,
             [registration_id]
@@ -76,9 +77,7 @@ const createJazzCashPayment = async (req, res, next) => {
             });
         }
 
-        // ── 4. Amount parse karo ─────────────────────────────────────────────
-        // event_price VARCHAR hai: "Free", "PKR 1,500", "PKR 500"
-        // Agar free hai toh payment nahi hogi
+        // ── 4. Parse amount ──────────────────────────────────────────────────
         const priceStr = registration.event_price || 'Free';
         const isFree = !priceStr || priceStr.toLowerCase() === 'free' || priceStr === '0';
 
@@ -89,8 +88,6 @@ const createJazzCashPayment = async (req, res, next) => {
             });
         }
 
-        // "PKR 1,500" → 1500 parse karo
-        // Remove "PKR", commas, spaces → numeric
         const numericPrice = parseFloat(priceStr.replace(/[^0-9.]/g, ''));
 
         if (isNaN(numericPrice) || numericPrice <= 0) {
@@ -100,14 +97,9 @@ const createJazzCashPayment = async (req, res, next) => {
             });
         }
 
-        // ticket_count ke hisaab se total calculate karo
         const totalAmount = numericPrice * registration.ticket_count;
 
-        // ── 5. Payment record create (PENDING state mein) ────────────────────
-        // Kyun pehle se create karo?
-        // Agar JazzCash return dobara aaye (network issue), toh pata ho
-        // ke payment already process ho chuki thi.
-        // Upsert (INSERT ... ON DUPLICATE KEY UPDATE) use karo
+        // ── 5. Create or upsert payment record in PENDING state ─────────────
         const txnRefNo = `T${registration_id}${Date.now()}`;
 
         await db.query(
@@ -121,7 +113,7 @@ const createJazzCashPayment = async (req, res, next) => {
             [registration_id, txnRefNo, totalAmount]
         );
 
-        // ── 6. JazzCash form data generate karo ─────────────────────────────
+        // ── 6. Generate JazzCash form payload ────────────────────────────────
         const { endpoint, formData } = createJazzCashPaymentData({
             orderId: registration_id,
             amount: totalAmount,
@@ -129,13 +121,12 @@ const createJazzCashPayment = async (req, res, next) => {
             description: `Payment for: ${registration.event_title}`
         });
 
-        // ── 7. Frontend ko data bhejo ────────────────────────────────────────
-        // Frontend yeh data le kar ek HTML form auto-submit karega JazzCash par
+        // ── 7. Return payload to frontend ────────────────────────────────────
         return res.status(200).json({
             success: true,
             data: {
-                endpoint,   // JazzCash URL
-                formData    // Saare hidden form fields
+                endpoint,
+                formData
             }
         });
 
@@ -146,48 +137,36 @@ const createJazzCashPayment = async (req, res, next) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 2. JAZZCASH RETURN (Webhook / Return URL)
+// 2. JAZZCASH RETURN (Webhook / Callback URL)
 //    Route:  POST /api/payments/jazzcash/return
-//    Access: PUBLIC — JazzCash is URL par POST karta hai (koi auth nahi)
-//
-// IMPORTANT: Yeh route PUBLIC hai lekin hum HASH verify karte hain.
-// Hash verification hi security hai — agar hash match na kare,
-// toh response tamper hua hai → reject karo.
+//    Access: PUBLIC — Called directly by JazzCash payment gateway
 // ═══════════════════════════════════════════════════════════════════════════════
 const jazzCashReturn = async (req, res, next) => {
     try {
         const integritySalt = process.env.JC_INTEGRITY_SALT;
-
-        // JazzCash sab data req.body mein bhejta hai (form POST)
         const responseData = req.body;
 
-        // ── 1. Hash Verification ─────────────────────────────────────────────
-        // JazzCash ne jo pp_SecureHash bheja hai, use hata do
-        // Baaki sab fields se hash banao aur compare karo
+        // ── 1. Hash verification ─────────────────────────────────────────────
         const receivedHash = responseData.pp_SecureHash;
 
-        // Hash ke bina fields (wo fields jo hash mein nahi hoti)
         const fieldsForHash = { ...responseData };
-        delete fieldsForHash.pp_SecureHash; // Hash field hash mein shamil nahi hoti
+        delete fieldsForHash.pp_SecureHash;
 
         const expectedHash = generateJazzCashHash(fieldsForHash, integritySalt);
 
         if (receivedHash !== expectedHash) {
             console.error('❌ Hash mismatch! Possible tampering.');
-            // Frontend par redirect karo failure page par
             return res.redirect(`http://localhost:5173/payment/result?status=failed&reason=hash_mismatch`);
         }
 
-        // ── 2. Response Code Check ────────────────────────────────────────────
-        // pp_ResponseCode === '000' → SUCCESS
-        // Baaki sab → FAILURE
+        // ── 2. Response code evaluation ──────────────────────────────────────
+        // '000' denotes success in JazzCash API
         const isSuccess = responseData.pp_ResponseCode === '000';
         const txnRefNo = responseData.pp_TxnRefNo;
-        const registrationId = responseData.ppmpf_2; // Humne ppmpf_2 mein orderId dala tha
+        const registrationId = responseData.ppmpf_2;
 
-        // ── 3. Database update karo ───────────────────────────────────────────
+        // ── 3. Update database records ───────────────────────────────────────
         if (isSuccess) {
-            // Payment successful → payments table update karo
             await db.query(
                 `UPDATE payments 
                  SET status = 'SUCCESS',
@@ -199,19 +178,17 @@ const jazzCashReturn = async (req, res, next) => {
                  WHERE registration_id = ?`,
                 [
                     txnRefNo,
-                    JSON.stringify(responseData), // Poora response save karo (audit ke liye)
+                    JSON.stringify(responseData),
                     registrationId
                 ]
             );
 
-            // Registration status REGISTERED kar do (agar tumhare schema mein hai)
-            // Agar nahi hai toh yeh line remove kar sakte ho
+            // Update registration status to REGISTERED
             await db.query(
                 `UPDATE registrations SET status = 'REGISTERED' WHERE id = ?`,
                 [registrationId]
             );
 
-            // Frontend par success page par redirect karo
             return res.redirect(
                 `http://localhost:5173/payment/result?status=success&registration_id=${registrationId}&txn=${txnRefNo}`
             );
@@ -239,15 +216,14 @@ const jazzCashReturn = async (req, res, next) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 3. PROCESS MOCK PAYMENT (Fake/Simulated Gateway)
+// 3. PROCESS MOCK PAYMENT (Simulated Gateway)
 //    Route:  POST /api/payments/mock/process
 //    Access: PARTICIPANT (JWT protected)
 //    Body:   { registration_id, card_number, expiry, cvv, account_name }
 //
 // Simulation Rules:
-//   - Card number last 4 digits = '0000' → FAILED (for testing failure case)
-//   - Any other valid card number → SUCCESS
-//   - Amount already stored in payments table (created during registration)
+//   - Card ending in '0000' triggers payment failure for testing
+//   - Any other valid card number simulates successful payment
 // ═══════════════════════════════════════════════════════════════════════════════
 const processMockPayment = async (req, res, next) => {
     try {
@@ -262,7 +238,7 @@ const processMockPayment = async (req, res, next) => {
             });
         }
 
-        // ── 2. Registration Verify + Ownership Check ──────────────────────────
+        // ── 2. Registration Verification & Ownership Check ──────────────────
         const [rows] = await db.query(
             `SELECT r.id, r.user_id, r.status, r.ticket_count,
                     e.title as event_title, e.price as event_price,
@@ -280,7 +256,7 @@ const processMockPayment = async (req, res, next) => {
 
         const reg = rows[0];
 
-        // Ownership check — sirf apni registration ka payment karo
+        // Ensure user can only pay for their own registrations
         if (reg.user_id !== user_id) {
             return res.status(403).json({
                 success: false,
@@ -288,7 +264,7 @@ const processMockPayment = async (req, res, next) => {
             });
         }
 
-        // Already confirmed/paid check
+        // Check if already registered or paid
         if (reg.status === 'REGISTERED' || reg.payment_status === 'SUCCESS') {
             return res.status(400).json({
                 success: false,
@@ -304,10 +280,8 @@ const processMockPayment = async (req, res, next) => {
         }
 
         // ── 3. Simulate Card Validation ───────────────────────────────────────
-        // Card number se spaces/dashes remove karo, last 4 digits check karo
         const cleanCard = card_number.replace(/[\s\-]/g, '');
 
-        // Basic card length check (13-19 digits)
         if (!/^\d{13,19}$/.test(cleanCard)) {
             return res.status(400).json({
                 success: false,
@@ -315,7 +289,7 @@ const processMockPayment = async (req, res, next) => {
             });
         }
 
-        // SIMULATION: Last 4 digits '0000' → payment fail
+        // SIMULATION: Cards ending in '0000' trigger a simulated failure
         const last4 = cleanCard.slice(-4);
         const isPaymentFailed = last4 === '0000';
 
@@ -323,7 +297,7 @@ const processMockPayment = async (req, res, next) => {
         const txnRef = `MOCK-${registration_id}-${Date.now()}`;
 
         if (isPaymentFailed) {
-            // ── 4a. FAILED: payments table update karo ────────────────────────
+            // Update payment record as FAILED
             await db.query(
                 `UPDATE payments 
                  SET status = 'FAILED',
@@ -342,8 +316,7 @@ const processMockPayment = async (req, res, next) => {
             });
         }
 
-        // ── 4b. SUCCESS: payments + registrations dono update karo ────────────
-        // Payments table
+        // ── 4b. SUCCESS: Update payments and registrations tables ────────────
         await db.query(
             `UPDATE payments 
              SET status = 'SUCCESS',
@@ -364,7 +337,7 @@ const processMockPayment = async (req, res, next) => {
             ]
         );
 
-        // Registration REGISTERED karo
+        // Update registration status to REGISTERED
         await db.query(
             `UPDATE registrations SET status = 'REGISTERED' WHERE id = ?`,
             [registration_id]
@@ -383,6 +356,5 @@ const processMockPayment = async (req, res, next) => {
         next(error);
     }
 };
-
 
 module.exports = { createJazzCashPayment, jazzCashReturn, processMockPayment };

@@ -6,12 +6,12 @@ const validate = require('../middleware/validateMiddleware');
 const { companySchema, updateCompanyStatusSchema, addOrganizerSchema } = require('../validations/companyValidation');
 const { getAllCompanies, getCompanyById, updateCompanyStatus, createCompany, updateCompany, addOrganizer } = require('../controllers/companyController');
 
-// GET    /api/companies              → saari companies (search + pagination)
-// GET    /api/companies/:id          → ek company ki detail
-// POST   /api/companies              → nayi company create
-// PUT    /api/companies/:id/status   → status change (activate/suspend)
-// PUT    /api/companies/:id          → full info update
-// POST   /api/companies/:id/organizers → company mein organizer add karo
+// GET    /api/companies                → List all companies (search + pagination)
+// GET    /api/companies/:id            → Get single company details
+// POST   /api/companies                → Create a new company
+// PUT    /api/companies/:id/status     → Update company status (ACTIVE / SUSPENDED)
+// PUT    /api/companies/:id            → Update full company profile
+// POST   /api/companies/:id/organizers → Add a new organizer to a company
 
 router.get('/', protect, authorizeRoles('PRODUCT_MANAGER'), getAllCompanies);
 router.get('/:id', protect, authorizeRoles('PRODUCT_MANAGER'), getCompanyById);

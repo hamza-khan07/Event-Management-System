@@ -1,7 +1,7 @@
 // frontend/src/pages/AllEventsPage.jsx
 //
 // RESPONSIBILITY: Dedicated "Explore All Events" page.
-// Wireframe ke mutabiq yeh page contain karta hai:
+// Page structure:
 //   1. Slim Hero  — Page title + subtitle
 //   2. Search Bar — Events, venues, organizers search
 //   3. Popular Categories — Quick filter chips
@@ -9,7 +9,7 @@
 //      - Left Sidebar: Filters (Category, Date, Location, Price)
 //      - Right Content: Sort dropdown + Event Cards Grid
 //
-// DRY: Existing EventCard component reuse kiya gaya hai.
+// DRY: Reuses the existing EventCard component.
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -96,7 +96,7 @@ const AllEventsPage = () => {
         }
     }, [searchQuery, selectedCategory, selectedPrice]);
 
-    // Mount par aur jab bhi filters change hon, events dobara fetch karo
+    // Re-fetch events on mount and whenever dependencies change
     useEffect(() => {
         fetchEvents();
     }, [fetchEvents]);
@@ -150,7 +150,7 @@ const AllEventsPage = () => {
         setSearchParams({});
     };
 
-    // Check karo koi filter active hai ya nahi (reset button dikhane ke liye)
+    // Check if any filters are currently active (to display reset button)
     const hasActiveFilters =
         searchQuery ||
         selectedCategory !== 'All' ||
@@ -158,12 +158,12 @@ const AllEventsPage = () => {
         selectedLocation ||
         selectedPrice !== 'All';
 
-    // API se jo events aaye unke basis par results count
+    // Result count based on filtered events
     const resultCount = displayedEvents.length;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            {/* Shared Navbar — DRY: existing component reuse */}
+            {/* Shared Navbar */}
             <Navbar />
 
             {/* ── 1. SLIM HERO ─────────────────────────────────────────────── */}
@@ -435,7 +435,7 @@ const AllEventsPage = () => {
             </div>
 
 
-            {/* Footer — DRY: existing component reuse */}
+            {/* Shared Footer */}
             <Footer />
 
         </div>

@@ -1,16 +1,16 @@
 // frontend/src/pages/PaymentCheckoutPage.jsx
 //
-// RESPONSIBILITY: Mock payment checkout page — JazzCash jaisi feel.
+// RESPONSIBILITY: Mock payment checkout page — similar feel to JazzCash.
 //
 // Flow:
-//   1. React Router state se registration_id, amount, event_title lo
-//   2. User card details fill kare
-//   3. "Pay Now" click → /api/payments/mock/process
+//   1. Retrieve registration_id, amount, event_title from React Router state
+//   2. User fills card details
+//   3. "Pay Now" clicked → /api/payments/mock/process
 //   4. Success → /payment/result?status=success
-//   5. Failure → error message dikhao (retry allowed)
+//   5. Failure → show error message (retry allowed)
 //
 // State Protection:
-//   - Agar state nahi aaya (direct URL access) → /events pe redirect
+//   - If state is missing (direct URL access) → redirect to /events
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -52,10 +52,10 @@ const PaymentCheckoutPage = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // React Router state se data lo
+    // Retrieve data from React Router state
     const { registration_id, amount, event_title, ticket_count } = location.state || {};
 
-    // ── Guard: State nahi aaya? → events page pe bhejo ───────────────────────
+    // ── Guard: Missing state? → redirect to events page ───────────────────────
     useEffect(() => {
         if (!registration_id || !amount) {
             navigate('/events', { replace: true });

@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 // Base URL of our backend API
-// withCredentials: true is CRITICAL — it tells axios to send cookies with every request
+// withCredentials: true is CRITICAL — instructs axios to send credentials/cookies with requests
 const api = axios.create({
     baseURL: 'http://localhost:5000/api',
-    withCredentials: true,   // Cookies bhejo har request ke saath
+    withCredentials: true,   // Send cookies along with every request
     headers: {
         'Content-Type': 'application/json'
     }
@@ -40,7 +40,7 @@ export const logoutUser = async () => {
 };
 
 /**
- * Get currently logged-in user (uses cookie automatically)
+ * Get currently logged-in user (relies on HTTP-only cookie automatically)
  */
 export const getCurrentUser = async () => {
     const response = await api.get('/auth/me');

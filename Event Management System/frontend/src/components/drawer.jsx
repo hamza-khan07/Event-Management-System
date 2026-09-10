@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 
 const Drawer = ({ isOpen, onClose, title, subtitle, children, footer }) => {
-    // Escape key dabane par drawer close karne ke liye (Great UX!)
+    // Close drawer on Escape key press for accessibility
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape' && isOpen) onClose();
@@ -41,7 +41,7 @@ const Drawer = ({ isOpen, onClose, title, subtitle, children, footer }) => {
                     </button>
                 </div>
 
-                {/* Body (Yahan jo bhi component pass karenge woh render hoga) */}
+                {/* Body (Renders child components passed to the drawer) */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-6">
                     {children}
                 </div>

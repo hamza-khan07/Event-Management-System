@@ -2,15 +2,12 @@
 
 const db = require('../config/db');
 
-// Validation helpers removed (now handled by Zod Validation Middleware)
 // ─────────────────────────────────────────────────────────────────
 // 1. CREATE EVENT
 //    Route: POST /api/events/create
-//    Access: ORGANIZER only (uski khud ki company ka event)
+//    Access: ORGANIZER only (creates event for their associated company)
 //
-// Kyun company_id JWT se?
-// Organizer apni company ID URL mein nahi deta — yeh security risk hoga.
-// JWT token mein company_id pehle se hai — use karo.
+// Company ID is extracted securely from the JWT payload.
 // ─────────────────────────────────────────────────────────────────
 const createEvent = async (req, res, next) => {
     try {
@@ -24,13 +21,13 @@ const createEvent = async (req, res, next) => {
             end_time,
             capacity,
             status,
-            price,        // ticket ki qeemat — "Free" ya "PKR 2,500"
-            image_url     // event banner image URL
+            price,        // Ticket price — e.g., "Free" or "PKR 2,500"
+            image_url     // Event banner image URL
         } = req.body;
 
         const company_id = req.user.company_id;
 
-        // ── Company check ──
+        // ── Verify company link ──
         if (!company_id) {
             return res.status(400).json({
                 success: false,
@@ -38,9 +35,7 @@ const createEvent = async (req, res, next) => {
             });
         }
 
-        // Manual validation replaced by Zod Validation Middleware
-
-        // ── End time must be after start time (Business Logic that Zod doesn't easily handle) ──
+        // ── End time validation ──
         if (end_time <= start_time) {
             return res.status(400).json({
                 success: false,
@@ -51,7 +46,6 @@ const createEvent = async (req, res, next) => {
         // ── Status validation ──
         const allowedStatuses = ['DRAFT', 'PUBLISHED'];
         const eventStatus = status && allowedStatuses.includes(status) ? status : 'DRAFT';
-        // Note: CANCELLED status create ke waqt nahi milta — sirf baad mein set hoti hai
 
         // ── DB Insert ──
         const [result] = await db.query(
@@ -74,7 +68,7 @@ const createEvent = async (req, res, next) => {
             ]
         );
 
-        // ── Naya event fetch karo aur return karo ──
+        // ── Fetch and return created event ──
         const [newEvent] = await db.query(
             'SELECT * FROM events WHERE id = ?',
             [result.insertId]
@@ -93,11 +87,8 @@ const createEvent = async (req, res, next) => {
 
 
 // ─────────────────────────────────────────────────────────────────
-// 2. GET MY EVENTS (Organizer ke saari events list)
+// 2. GET MY EVENTS (List of events for organizer's company)
 //    Route: GET /api/events/my-events?search=...&status=...&page=1&limit=10
-//
-// Kyun: Create Event ke baad events list chahiye —
-// "My Events" page par show hogi yeh list.
 // ─────────────────────────────────────────────────────────────────
 const getMyEvents = async (req, res, next) => {
     try {
@@ -115,7 +106,7 @@ const getMyEvents = async (req, res, next) => {
         const limitNum = parseInt(limit);
         const offset = (pageNum - 1) * limitNum;
 
-        // Dynamic WHERE clause build karo
+        // Build dynamic WHERE clause
         let baseWhere = 'WHERE e.company_id = ?';
         const params = [company_id];
 
@@ -172,11 +163,6 @@ const getMyEvents = async (req, res, next) => {
 // 3. UPDATE EVENT STATUS
 //    Route: PUT /api/events/:id/status
 //    Body: { status: 'DRAFT' | 'PUBLISHED' | 'CANCELLED' }
-//
-// Kyun alag function?
-// Create aur Status Change alag operations hain — Single Responsibility.
-// Organizer sirf apni company ke event ka status change kar sakta hai.
-// Yahi "Ownership check" pattern Company module mein bhi use hua.
 // ─────────────────────────────────────────────────────────────────
 const updateEventStatus = async (req, res, next) => {
     try {
@@ -184,10 +170,7 @@ const updateEventStatus = async (req, res, next) => {
         const { status } = req.body;
         const company_id = req.user.company_id;
 
-        // Manual validation replaced by Zod Validation Middleware
-
-        // Ownership check: kya yeh event is organizer ki company ka hai?
-        // URL mein event ID dete hain — backend check karta hai ownership
+        // Verify event ownership
         const [events] = await db.query(
             'SELECT id, company_id FROM events WHERE id = ?',
             [id]
@@ -197,7 +180,6 @@ const updateEventStatus = async (req, res, next) => {
             return res.status(404).json({ success: false, message: 'Event not found.' });
         }
 
-        // Security: doosri company ka event change nahi kar sakte
         if (events[0].company_id !== company_id) {
             return res.status(403).json({
                 success: false,
@@ -218,6 +200,7 @@ const updateEventStatus = async (req, res, next) => {
 };
 
 
+// ─────────────────────────────────────────────────────────────────
 // 4. UPDATE EVENT (Edit)
 //    Route: PUT /api/events/:id
 //    Access: ORGANIZER only
@@ -246,11 +229,11 @@ const updateEvent = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'End time must be after start time.' });
         }
 
-        // 3. Validate status — edit form can only set DRAFT or PUBLISHED (not CANCELLED)
+        // 3. Validate status — edit form allows setting DRAFT or PUBLISHED
         const allowedStatuses = ['DRAFT', 'PUBLISHED'];
         const newStatus = status && allowedStatuses.includes(status) ? status : null;
 
-        // 4. Update Query — status column bhi update karo agar valid aaya
+        // 4. Execute update query
         await db.query(
             `UPDATE events 
              SET title = COALESCE(?, title),
@@ -279,15 +262,17 @@ const updateEvent = async (req, res, next) => {
         next(error);
     }
 };
+
 // ─────────────────────────────────────────────────────────────────
 // 5. DELETE EVENT (Hard Delete)
 //    Route: DELETE /api/events/:id
-//    Access: ORGANIZER only
+//    Access: ORGANIZER only (DRAFT events only)
 // ─────────────────────────────────────────────────────────────────
 const deleteEvent = async (req, res, next) => {
     try {
         const { id } = req.params;
         const company_id = req.user.company_id;
+
         // 1. Check Ownership & Status
         const [events] = await db.query(
             'SELECT id, company_id, status FROM events WHERE id = ?',
@@ -299,15 +284,16 @@ const deleteEvent = async (req, res, next) => {
         if (events[0].company_id !== company_id) {
             return res.status(403).json({ success: false, message: 'You can only delete your own events.' });
         }
-        // 2. Business Logic Rule (Kyun? Agar event PUBLISHED hai toh shayed log register ho chukay hon. 
-        // Is liye strictly sirf DRAFT event hi permanently delete (hard delete) ho sakta hai.)
+
+        // 2. Business Rule: Only DRAFT events can be permanently deleted to protect attendee records
         if (events[0].status !== 'DRAFT') {
             return res.status(400).json({
                 success: false,
                 message: 'Only DRAFT events can be deleted. If you want to stop this event, change its status to CANCELLED instead.'
             });
         }
-        // 3. Hard Delete Query
+
+        // 3. Delete event record
         await db.query('DELETE FROM events WHERE id = ?', [id]);
         res.status(200).json({ success: true, message: 'Event deleted permanently.' });
     } catch (error) {
@@ -317,13 +303,9 @@ const deleteEvent = async (req, res, next) => {
 
 
 // ─────────────────────────────────────────────────────────────────
-// 6. GET PUBLIC EVENTS (Sab published events — login zaroorat nahi)
+// 6. GET PUBLIC EVENTS (Publicly accessible list of published events)
 //    Route: GET /api/events/public?search=&category=&page=1&limit=9
 //    Access: Public
-//
-// Kyun alag function? getMyEvents sirf ek organizer ki events deta tha
-// aur ORGANIZER role chahiye tha. Public pages ko sab companies ki
-// PUBLISHED events chahiye hoti hain bina kisi auth ke.
 // ─────────────────────────────────────────────────────────────────
 const getPublicEvents = async (req, res, next) => {
     try {
@@ -332,23 +314,23 @@ const getPublicEvents = async (req, res, next) => {
         const limitNum = parseInt(limit);
         const offset = (pageNum - 1) * limitNum;
 
-        // Base filter: sirf PUBLISHED events public ko dikhao
+        // Base filter: Only PUBLISHED events are accessible publicly
         let baseWhere = "WHERE e.status = 'PUBLISHED'";
         const params = [];
 
-        // Search filter — title, venue, ya description mein
+        // Search filter on title, venue, or description
         if (search) {
             baseWhere += ' AND (e.title LIKE ? OR e.venue LIKE ? OR e.description LIKE ?)';
             params.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
-        // Category filter — exact match
+        // Category filter
         if (category) {
             baseWhere += ' AND e.category = ?';
             params.push(category);
         }
 
-        // Price filter — Free vs Paid
+        // Price filter: Free vs Paid
         if (price === 'Free') {
             baseWhere += " AND (e.price IS NULL OR e.price = '' OR LOWER(e.price) = 'free' OR e.price = '0')";
         } else if (price === 'Paid') {
@@ -397,8 +379,6 @@ const getPublicEvents = async (req, res, next) => {
 // 7. GET SINGLE PUBLIC EVENT BY ID
 //    Route: GET /api/events/public/:id
 //    Access: Public
-//
-// EventDetailPage ke liye — ek specific event ka poora detail
 // ─────────────────────────────────────────────────────────────────
 const getPublicEventById = async (req, res, next) => {
     try {

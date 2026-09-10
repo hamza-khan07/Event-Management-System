@@ -11,7 +11,7 @@ const DashboardPage = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-    // API se aane wale numbers is state me save honge
+    // State storing statistics fetched from the API
     const [stats, setStats] = useState({
         totalCompanies: 0,
         totalOrganizers: 0,
@@ -24,36 +24,35 @@ const DashboardPage = () => {
 
     const [loadingStats, setLoadingStats] = useState(false);
 
-    // Floating button ki visibility control karne ke liye
+    // Controls visibility of the floating scroll button
     const [showScrollButton, setShowScrollButton] = useState(true);
     useEffect(() => {
-        // Table ko uske ID se find kar rahe hain
+        // Locate target table element by its ID
         const tableElement = document.getElementById('top-organizers-section');
         if (!tableElement) return;
-        // IntersectionObserver check karega k table user ki screen (viewport) mein aai hai ya nahi
+        // IntersectionObserver tracks whether the table is in the viewport
         const observer = new IntersectionObserver(
             ([entry]) => {
-                // Agar table screen par aa gayi hai (isIntersecting), to button hide (false) kar do.
-                // Agar nahi aayi, to button show (true) kar do.
+                // Hide button when table is visible in viewport
                 setShowScrollButton(!entry.isIntersecting);
             },
             {
-                root: null, // Viewport (puri screen) ko root maan rahay hain
-                threshold: 0.1 // Jaise hi table 10% bhi nazar aaye, button hide kardo
+                root: null, // Viewport root
+                threshold: 0.1 // Trigger when 10% of element is visible
             }
         );
         observer.observe(tableElement);
         return () => {
             if (tableElement) observer.unobserve(tableElement);
         };
-    }, [user]); // user dependency isiliye takay agar PM data baad me load ho to observer theek se lag jaye
-    // Click par smoothly scroll karwane ka function
+    }, [user]); // Re-attach if user state updates
+    // Smooth scroll to top organizers section
     const scrollToOrganizers = () => {
         document.getElementById('top-organizers-section')?.scrollIntoView({ behavior: 'smooth' });
     };
 
 
-    // Jab page load ho, toh backend ko call lagao (sirf PM ke liye)
+    // Fetch stats on mount (for Product Manager role only)
     useEffect(() => {
         if (user?.role === 'PRODUCT_MANAGER') {
             fetchStats();
@@ -63,14 +62,11 @@ const DashboardPage = () => {
     const fetchStats = async () => {
         setLoadingStats(true);
         try {
-            // Humne `fetch` hata kar `axios.get` laga diya
             const response = await axios.get('http://localhost:5000/api/dashboard/pm-stats', {
-                withCredentials: true // Cookie (token) backend ko bhejne k liye zaroori hai
+                withCredentials: true // Send auth cookie with request
             });
 
-            // Note: Axios automatically data ko JSON mein badal deta hai.
-            // Is liye humein `await response.json()` likhne ki zaroorat nahi pari.
-            // Hum direct response.data check kar saktay hain.
+            // Axios automatically parses JSON response
             if (response.data.success) {
                 setStats(response.data.data);
             }
@@ -122,7 +118,7 @@ const DashboardPage = () => {
                     </p>
                 </header>
 
-                {/* Sirf PM ko Stats dikhane hain */}
+                {/* Product Manager Statistics */}
                 {user?.role === 'PRODUCT_MANAGER' && (
                     <div>
                         <h2 className="text-base font-semibold text-gray-800 mb-2">Platform Statistics</h2>
@@ -148,7 +144,7 @@ const DashboardPage = () => {
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-800">Platform Growth</h3>
-                                        <p className="text-[11px] text-gray-500">Users vs Events (Last 6 months)</p>
+                                        <p className="text-[11px] text-gray-500">Organizers, Participants & Events (Last 6 months)</p>
                                     </div>
                                     <TrendingUp size={16} className="text-blue-500" />
                                 </div>
@@ -159,7 +155,8 @@ const DashboardPage = () => {
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                                             <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                            <Line type="monotone" dataKey="users" name="New Users" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                            <Line type="monotone" dataKey="organizers" name="Organizers" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                                            <Line type="monotone" dataKey="participants" name="Participants" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                                             <Line type="monotone" dataKey="events" name="Events" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                                         </LineChart>
                                     </ResponsiveContainer>
@@ -253,7 +250,7 @@ const DashboardPage = () => {
 
 
 
-                {/* Agar user PM nahi hai (Organizer / Participant) */}
+                {/* Non-Product Manager fallback */}
                 {user?.role !== 'PRODUCT_MANAGER' && (
                     <div className="bg-white p-8 rounded-xl border border-blue-100 shadow-sm text-center bg-blue-50">
                         <p className="text-blue-800 font-medium">

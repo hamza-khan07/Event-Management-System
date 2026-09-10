@@ -10,12 +10,12 @@ const CompaniesPage = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
 
-    // State: Companies data, loading, search input, aur pagination
+    // State: Companies data, loading, search input, and pagination
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1 });
-    const [limit, setLimit] = useState(10); // [NEW] Limit ke liye state bana li
+    const [limit, setLimit] = useState(10); // Page size limit state
     const [selectedCompany, setSelectedCompany] = useState(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
     // Create Company Modal states
@@ -33,16 +33,16 @@ const CompaniesPage = () => {
     });
     const [creating, setCreating] = useState(false);
 
-    // Edit Company states — drawer ke andar inline edit ke liye
+    // Edit Company states — for inline editing inside drawer
     const [editMode, setEditMode] = useState(false);
     const [editData, setEditData] = useState({});
     const [updating, setUpdating] = useState(false);
 
-    // Add Organizer states — company drawer mein organizer add karne ke liye
+    // Add Organizer states — for adding an organizer to the company via drawer
     const [showAddOrganizer, setShowAddOrganizer] = useState(false);
     const [orgForm, setOrgForm] = useState({ name: '', email: '', password: '' });
     const [addingOrg, setAddingOrg] = useState(false);
-    const [orgError, setOrgError] = useState('');   // inline error message ke liye
+    const [orgError, setOrgError] = useState('');   // Inline error message state
 
 
     const handleLogout = async () => {
@@ -51,13 +51,13 @@ const CompaniesPage = () => {
     };
 
     const handleCreate = async (e) => {
-        e.preventDefault(); // page reload rokna
+        e.preventDefault(); // Prevent page reload
         setCreating(true);
         try {
             await axios.post('http://localhost:5000/api/companies', formData, { withCredentials: true });
 
-            // Success ke baad:
-            setShowCreateModal(false);                   // modal band karo
+            // On success:
+            setShowCreateModal(false);                   // Close modal
             setFormData({
                 name: '',
                 email: '',
@@ -68,8 +68,8 @@ const CompaniesPage = () => {
                 tagline: '',
                 logo: '',
                 banner: ''
-            }); // form reset
-            fetchCompanies(search, 1, limit);            // list refresh karo — page 1 pe wapis
+            }); // Reset form
+            fetchCompanies(search, 1, limit);            // Refresh list on page 1
         } catch (err) {
             console.error('Failed to create company:', err);
             alert('Error creating company!');
@@ -80,7 +80,7 @@ const CompaniesPage = () => {
 
 
 
-    // Jab bhi search, page ya limit change ho, data dobara fetch karo
+    // Re-fetch data whenever search, page, or limit changes
     useEffect(() => {
         fetchCompanies(search, pagination.currentPage, limit);
     }, [search, pagination.currentPage, limit]);
@@ -89,7 +89,7 @@ const CompaniesPage = () => {
         setLoading(true);
         try {
             const res = await axios.get('http://localhost:5000/api/companies', {
-                params: { search: searchTerm, page, limit: currentLimit }, // Yahan dynamic limit pass hogi
+                params: { search: searchTerm, page, limit: currentLimit }, // Dynamic limit param
                 withCredentials: true
             });
 
@@ -115,7 +115,7 @@ const CompaniesPage = () => {
                 { status: newStatus },
                 { withCredentials: true }
             );
-            // API call ke baad local state bhi update karo (page reload na hona pade)
+            // Update local state without reloading the page
             setCompanies(prev =>
                 prev.map(c => c.id === companyId ? { ...c, status: newStatus } : c)
             );
@@ -124,7 +124,7 @@ const CompaniesPage = () => {
         }
     };
 
-    // Row click hone par company detail fetch karo
+    // Fetch company detail on row click
     const handleRowClick = async (companyId) => {
         try {
             const res = await axios.get(
@@ -132,21 +132,21 @@ const CompaniesPage = () => {
                 { withCredentials: true }
             );
             if (res.data.success) {
-                setSelectedCompany(res.data.data); // data state mein set karo
-                setDrawerOpen(true);               // drawer kholo
+                setSelectedCompany(res.data.data); // Set company state
+                setDrawerOpen(true);               // Open drawer
             }
         } catch (err) {
             console.error('Failed to fetch company detail:', err);
         }
     };
 
-    // Drawer band karo — edit mode + organizer form bhi reset karo
+    // Close drawer and reset edit mode and organizer form states
     const closeDrawer = () => {
         setDrawerOpen(false);
         setSelectedCompany(null);
-        setEditMode(false);   // drawer band hone par edit mode reset
+        setEditMode(false);   // Reset edit mode on drawer close
         setEditData({});
-        setShowAddOrganizer(false);   // organizer form bhi reset
+        setShowAddOrganizer(false);   // Reset organizer form
         setOrgForm({ name: '', email: '', password: '' });
         setOrgError('');
     };
@@ -154,7 +154,7 @@ const CompaniesPage = () => {
     // Add Organizer submit handler — POST /api/companies/:id/organizers
     const handleAddOrganizer = async (e) => {
         e.preventDefault();
-        setOrgError('');      // pehle purana error clear karo
+        setOrgError('');      // Clear existing error
         setAddingOrg(true);
         try {
             const res = await axios.post(
@@ -162,19 +162,19 @@ const CompaniesPage = () => {
                 orgForm,
                 { withCredentials: true }
             );
-            // Nayi organizer ko local state mein add karo — page reload nahi
+            // Append new organizer to local state without page reload
             const newOrg = res.data.data;
             setSelectedCompany(prev => ({
                 ...prev,
                 organizers: [...(prev.organizers || []), newOrg]
             }));
-            // Form reset aur modal band karo
+            // Reset form and close section
             setOrgForm({ name: '', email: '', password: '' });
             setShowAddOrganizer(false);
         } catch (err) {
-            // Server se message lo, nahi to generic error
-            const msg = err.response?.data?.message || 'Organizer add karne mein error aaya';
-            setOrgError(msg);   // alert ki jagah inline error — better UX
+            // Extract error message from response or use fallback
+            const msg = err.response?.data?.message || 'Failed to add organizer';
+            setOrgError(msg);   // Inline error display
         } finally {
             setAddingOrg(false);
         }
@@ -190,11 +190,11 @@ const CompaniesPage = () => {
                 editData,
                 { withCredentials: true }
             );
-            // Local state update karo — page reload na hona pade
+            // Update local state without reloading the page
             const updated = { ...selectedCompany, ...editData };
             setSelectedCompany(updated);
             setCompanies(prev => prev.map(c => c.id === selectedCompany.id ? { ...c, ...editData } : c));
-            setEditMode(false); // edit mode band karo
+            setEditMode(false); // Exit edit mode
         } catch (err) {
             console.error('Failed to update company:', err);
             alert('Company update karne mein error aaya!');
@@ -207,7 +207,7 @@ const CompaniesPage = () => {
 
     return (
         <div className="h-screen bg-slate-100 flex overflow-hidden">
-            {/* Reusable Sidebar — Same component jo Dashboard par use kiya */}
+            {/* Reusable Sidebar component */}
             <Sidebar user={user} handleLogout={handleLogout} />
 
             <main className="flex-1 p-6 overflow-y-auto">
@@ -246,7 +246,7 @@ const CompaniesPage = () => {
                             value={limit}
                             onChange={(e) => {
                                 setLimit(Number(e.target.value));
-                                // Limit change hone par page 1 par wapis le aao
+                                // Reset to page 1 on limit change
                                 setPagination(p => ({ ...p, currentPage: 1 }));
                             }}
                             className="border border-gray-200 rounded-lg text-sm px-3 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
@@ -295,7 +295,7 @@ const CompaniesPage = () => {
                                             {/* Toggle Button */}
                                             <button
                                                 onClick={(e) => {
-                                                    e.stopPropagation(); // Row click ko rokna — sirf button ka kaam hoga
+                                                    e.stopPropagation(); // Prevent row click action
                                                     handleStatusChange(company.id, company.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE');
                                                 }}
                                                 className={`text-xs font-medium px-3 py-1.5 rounded-lg transition ${company.status === 'ACTIVE'
@@ -371,11 +371,11 @@ const CompaniesPage = () => {
                                     Company Info
                                 </h3>
                                 {!editMode ? (
-                                    // "Edit Info" button — click karo to edit mode on ho
+                                    // "Edit Info" button — toggles edit mode
                                     <button
                                         onClick={() => {
                                             setEditMode(true);
-                                            // Current values pre-fill karo form mein
+                                            // Pre-fill form with current values
                                             setEditData({
                                                 name: selectedCompany.name || '',
                                                 email: selectedCompany.email || '',
@@ -389,7 +389,7 @@ const CompaniesPage = () => {
                                         ✏ Edit Info
                                     </button>
                                 ) : (
-                                    // "Cancel" button — edit mode off karo
+                                    // "Cancel" button — exits edit mode
                                     <button
                                         onClick={() => setEditMode(false)}
                                         className="text-xs text-gray-400 hover:text-gray-600 font-medium transition"
@@ -402,7 +402,7 @@ const CompaniesPage = () => {
                             {editMode ? (
                                 // ── EDIT FORM (inline in drawer) ──
                                 <form onSubmit={handleUpdate} className="space-y-3">
-                                    {[  // DRY: array se fields render karo — ek jagah list, ek jagah JSX
+                                    {[  // Render fields from config array for clean JSX
                                         { label: 'Company Name *', key: 'name', type: 'text', required: true },
                                         { label: 'Tagline', key: 'tagline', type: 'text', required: false },
                                         { label: 'Website', key: 'website', type: 'url', required: false },
@@ -423,7 +423,7 @@ const CompaniesPage = () => {
                                             />
                                         </div>
                                     ))}
-                                    {/* Description is textarea — alag render karo */}
+                                    {/* Description textarea */}
                                     <div>
                                         <label className="text-[10px] font-semibold text-gray-400 uppercase mb-0.5 block">Description</label>
                                         <textarea
@@ -520,7 +520,7 @@ const CompaniesPage = () => {
                                 <h3 className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
                                     Organizers ({selectedCompany.organizers?.length || 0})
                                 </h3>
-                                {/* Show Add button sirf tab jab form open na ho */}
+                                {/* Show Add button only when form is closed */}
                                 {!showAddOrganizer && (
                                     <button
                                         onClick={() => {
@@ -535,12 +535,12 @@ const CompaniesPage = () => {
                                 )}
                             </div>
 
-                            {/* Inline Add Organizer Form — show hoga jab showAddOrganizer true ho */}
+                            {/* Inline Add Organizer Form */}
                             {showAddOrganizer && (
                                 <form onSubmit={handleAddOrganizer} className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2">
                                     <p className="text-xs font-semibold text-blue-700 mb-2">New Organizer Details</p>
 
-                                    {/* Inline error message — alert() ki jagah yahan dikhao */}
+                                    {/* Inline error message */}
                                     {orgError && (
                                         <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
                                             {orgError}

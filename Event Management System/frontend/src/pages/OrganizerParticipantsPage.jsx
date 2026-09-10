@@ -1,15 +1,15 @@
 // frontend/src/pages/OrganizerParticipantsPage.jsx
 //
-// RESPONSIBILITY: Organizer ke tamam events ke registered participants dikhana.
+// RESPONSIBILITY: Display all registered participants across all events of an organizer.
 //
 // Design Pattern:
-//   MyEventsPage ki tarah — Sidebar + filters bar + table + drawer + pagination.
-//   Ek consistent UX pattern maintain kiya hai poore Organizer portal mein.
+//   Similar to MyEventsPage — Sidebar + filters bar + table + drawer + pagination.
+//   Maintains a consistent UX pattern throughout the Organizer portal.
 //
 // Flow:
-//   Organizer → Sidebar "My Participants" → Ye page load hota hai
-//   Filters change → re-fetch → table update
-//   Row click → Drawer slide in → participant ka poora detail
+//   Organizer → Sidebar "My Participants" → Page loads
+//   Filters change → re-fetch → table updates
+//   Row click → Drawer slides in → displays full participant details
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Context/AuthContext';
@@ -36,7 +36,7 @@ const RegistrationStatusBadge = ({ status }) => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-// HELPER: InfoRow (Drawer ke andar label-value pairs)
+// HELPER: InfoRow (label-value pairs inside drawer)
 // Same pattern as MyEventsPage — DRY
 // ─────────────────────────────────────────────────────────────────
 const InfoRow = ({ label, value }) => (
@@ -94,8 +94,8 @@ const OrganizerParticipantsPage = () => {
 
             if (res.data.success) {
                 setParticipants(res.data.data);
-                // Events list sirf pehli baar (ya eventsList empty ho tab) set karo
-                // Backend har baar bhejta hai — dropdown ke liye fresh data
+                // Set events list on initial load or if list is empty
+                // Backend provides fresh data for the dropdown
                 if (res.data.events) {
                     setEventsList(res.data.events);
                 }
@@ -112,7 +112,7 @@ const OrganizerParticipantsPage = () => {
         }
     }, []);
 
-    // Filters/page/limit change hone par re-fetch
+    // Re-fetch when filters, page, or limit changes
     useEffect(() => {
         fetchParticipants(search, eventIdFilter, statusFilter, pagination.currentPage, limit);
     }, [search, eventIdFilter, statusFilter, pagination.currentPage, limit]);

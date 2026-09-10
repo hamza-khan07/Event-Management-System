@@ -1,6 +1,6 @@
 // frontend/src/pages/PaymentResult.jsx
 //
-// RESPONSIBILITY: JazzCash return ke baad result dikhao.
+// RESPONSIBILITY: Display payment result following gateway redirection.
 //
 // URL params:
 //   ?status=success&registration_id=5&txn=TXXXXX
@@ -10,7 +10,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, Home, Ticket } from 'lucide-react';
 
 const PaymentResult = () => {
-    // URL se query params nikalo
+    // Extract query parameters from URL
     // e.g. /payment/result?status=success&registration_id=5
     const [searchParams] = useSearchParams();
 

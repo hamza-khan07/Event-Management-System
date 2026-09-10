@@ -5,7 +5,7 @@
 // Structure: Navbar -> Hero -> Featured Events -> How It Works -> Contact -> Footer
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // /events page par navigate karne ke liye
+import { useNavigate } from 'react-router-dom'; // For navigating to /events page
 import {
     Search,
     Compass,
@@ -60,7 +60,7 @@ const LandingPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab]     = useState('All Events');
 
-    // API se featured events — sirf PUBLISHED events aati hain (limit=6)
+    // Featured events from API — only PUBLISHED events returned (limit=6)
     const [featuredEvents, setFeaturedEvents] = useState([]);
 
     useEffect(() => {
@@ -69,7 +69,7 @@ const LandingPage = () => {
                 const data = await getPublicEvents({ limit: 6 });
                 setFeaturedEvents(data.data || []);
             } catch {
-                // Featured events load nahi huin — silently fail (non-critical)
+                // Silently handle error if featured events fail to load
                 setFeaturedEvents([]);
             }
         };
@@ -208,7 +208,7 @@ const LandingPage = () => {
                         ))}
                     </div>
 
-                    {/* Events Grid — filtered results dikhata hai */}
+                    {/* Events Grid — displays filtered results */}
                     {filteredEvents.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
                             {filteredEvents.map((event) => (
@@ -233,7 +233,7 @@ const LandingPage = () => {
                     )}
 
                     {/* ---- "Explore All Events" CTA Button ---- */}
-                    {/* Wireframe ke mutabiq: Featured Events section ke neeche center mein */}
+                    {/* Centered below Featured Events section */}
                     <div className="flex justify-center mt-12">
                         <button
                             onClick={() => navigate('/events')}

@@ -1,32 +1,31 @@
 // backend/src/utils/jazzcashHash.js
 //
-// RESPONSIBILITY: JazzCash ke liye HMAC-SHA256 hash generate karna.
+// RESPONSIBILITY: Generate HMAC-SHA256 hash for JazzCash transactions.
 //
-// Kyun alag utility?
-// Hash generation ek pure function hai — koi side effect nahi.
-// Ek jagah rakh do, baar baar import karo (DRY).
-// Testing bhi aasan hogi.
+// Why separate utility?
+// Hash generation is a pure function without side effects.
+// Kept in a single location for reusability (DRY) and unit testability.
 
-const crypto = require('crypto'); // Node.js built-in — koi npm package nahi chahiye
+const crypto = require('crypto'); // Built-in Node.js module
 
 /**
- * JazzCash HMAC-SHA256 hash generate karta hai.
+ * Generates JazzCash HMAC-SHA256 hash.
  *
  * Algorithm:
- * 1. Saare fields le lo (object)
- * 2. Sirf non-empty values filter karo
- * 3. Keys ko alphabetically sort karo
- * 4. Values ko "&" se join karo: "val1&val2&val3"
- * 5. IntegritySalt ko PEHLE prefix karo: "salt&val1&val2&val3"
- * 6. HMAC-SHA256 apply karo (key = IntegritySalt)
- * 7. Result hex string mein return karo
+ * 1. Receive fields object
+ * 2. Filter non-empty values
+ * 3. Sort keys alphabetically
+ * 4. Join values with "&": "val1&val2&val3"
+ * 5. Prefix integritySalt: "salt&val1&val2&val3"
+ * 6. Apply HMAC-SHA256 (key = integritySalt)
+ * 7. Return resulting hex string
  *
  * @param {Object} fields - Payment fields (key-value pairs)
- * @param {string} integritySalt - JazzCash ka secret salt
+ * @param {string} integritySalt - JazzCash secret salt
  * @returns {string} - HMAC-SHA256 hash (hex)
  */
 const generateJazzCashHash = (fields, integritySalt) => {
-    // Step 1: Sirf non-empty values rakhho
+    // Step 1: Keep only non-empty values
     const filteredFields = {};
     Object.keys(fields).forEach(key => {
         if (fields[key] !== '' && fields[key] !== null && fields[key] !== undefined) {
@@ -34,17 +33,17 @@ const generateJazzCashHash = (fields, integritySalt) => {
         }
     });
 
-    // Step 2: Keys ko alphabetically sort karo
+    // Step 2: Sort keys alphabetically
     const sortedKeys = Object.keys(filteredFields).sort();
 
-    // Step 3: Values extract karo sorted order mein
+    // Step 3: Extract values in sorted key order
     const sortedValues = sortedKeys.map(key => filteredFields[key]);
 
-    // Step 4: IntegritySalt + values ko "&" se join karo
+    // Step 4: Prepend integritySalt and join values with "&"
     // Format: "salt&value1&value2&value3"
     const hashString = [integritySalt, ...sortedValues].join('&');
 
-    // Step 5: HMAC-SHA256 apply karo
+    // Step 5: Apply HMAC-SHA256
     // Key = integritySalt, Data = hashString
     const hash = crypto
         .createHmac('sha256', integritySalt)

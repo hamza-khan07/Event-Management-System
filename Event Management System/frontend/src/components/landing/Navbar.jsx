@@ -25,7 +25,7 @@ const Navbar = () => {
     const [activeNav, setActiveNav] = useState('#home');
 
     const isLandingPage = location.pathname === '/';
-    // Transparent sirf landing page pe jab user top par ho aur mobile menu band ho
+    // Transparent only on the landing page when scrolled to the top and mobile menu is closed
     const isTransparent = isLandingPage && !scrolled && !menuOpen;
 
     useEffect(() => {

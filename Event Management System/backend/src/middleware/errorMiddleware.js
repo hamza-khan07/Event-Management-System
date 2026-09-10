@@ -2,9 +2,9 @@
 
 // ─────────────────────────────────────────────────────────────────
 // GLOBAL ERROR HANDLER
-// Kyun: Har controller mein try-catch laga kar manual 500 error 
-// bhejna scalable nahi hai. Yeh middleware sab unhandled errors ko
-// pakre ga aur ek consistent JSON format mein response dega.
+// Responsibility: Catch all unhandled application errors and return
+// a consistent JSON error response structure instead of manual try/catch
+// in every controller.
 // ─────────────────────────────────────────────────────────────────
 const errorHandler = (err, req, res, next) => {
     console.error('🔥 [Global Error Handler]:', err.stack);
@@ -15,7 +15,7 @@ const errorHandler = (err, req, res, next) => {
     res.status(statusCode).json({
         success: false,
         message: message,
-        // Development environment mein stack trace bhejna helpful hai
+        // Include stack trace only in development environment
         stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 };
