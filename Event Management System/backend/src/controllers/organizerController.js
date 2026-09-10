@@ -136,41 +136,6 @@ const updateMyCompany = async (req, res, next) => {
 };
 
 
-// // ─────────────────────────────────────────────────────────────────
-// // 3. GET MY PROFILE
-// //    Route: GET /api/organizer/my-profile
-// //
-// // Kyun yeh chahiye?
-// // Organizer apna naam, email, company link sab ek jagah dekhna chahta hai.
-// // JWT mein basic info hai, lekin hum fresh DB data chahte hain (status bhi).
-// // ─────────────────────────────────────────────────────────────────
-// const getMyProfile = async (req, res) => {
-//     try {
-//         const [users] = await db.query(
-//             `SELECT 
-//                 u.id, u.name, u.email, u.role, u.status, u.created_at,
-//                 c.name AS company_name, c.id AS company_id, c.status AS company_status
-//              FROM users u
-//              LEFT JOIN companies c ON u.company_id = c.id
-//              WHERE u.id = ?`,
-//             [req.user.id]
-//         );
-
-//         if (users.length === 0) {
-//             return res.status(404).json({ success: false, message: 'Profile not found.' });
-//         }
-
-//         res.status(200).json({
-//             success: true,
-//             data: users[0]
-//         });
-
-//     } catch (error) {
-//         console.error('Get My Profile Error:', error);
-//         res.status(500).json({ success: false, message: 'Failed to fetch profile.' });
-//     }
-// };
-
 
 // ─────────────────────────────────────────────────────────────────
 // 4. GET OVERVIEW STATS (Organizer Dashboard Analytics)

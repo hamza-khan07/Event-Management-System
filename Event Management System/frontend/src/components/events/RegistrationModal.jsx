@@ -13,6 +13,7 @@
 //   onSuccess → optional callback jab registration kamyaab ho
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     X, Ticket, Phone, User, Mail, CheckCircle2,
     Loader2, AlertCircle, Users
@@ -23,6 +24,7 @@ import { useAuth } from '../../Context/AuthContext';
 // ─── Main Component ────────────────────────────────────────────────────────────
 const RegistrationModal = ({ event, onClose, onSuccess }) => {
     const { user } = useAuth();    // Logged-in user ka data (pre-fill ke liye)
+    const navigate = useNavigate(); // Checkout pe redirect ke liye
 
     // ── Form State ──────────────────────────────────────────────────────────
     // name aur email pre-fill karo user context se — editable hai taake user
@@ -100,6 +102,21 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
 
             const data = await registerForEvent(event.id, payload);
 
+            // Paid event? → Checkout page pe redirect karo (modal band karo pehle)
+            if (data.requiresPayment) {
+                onClose(); // Modal band karo
+                navigate('/payment/checkout', {
+                    state: {
+                        registration_id: data.data.id,
+                        amount: data.amount,
+                        event_title: data.event_title || event.title,
+                        ticket_count: parseInt(formData.ticket_count)
+                    }
+                });
+                return;
+            }
+
+            // Free event → same success screen
             setSuccess(data.data);
             if (onSuccess) onSuccess(data.data);
 

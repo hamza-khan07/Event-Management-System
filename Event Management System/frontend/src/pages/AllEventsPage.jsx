@@ -12,6 +12,7 @@
 // DRY: Existing EventCard component reuse kiya gaya hai.
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X, ChevronDown, Calendar, Loader2 } from 'lucide-react';
 import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
@@ -44,8 +45,11 @@ const SORT_OPTIONS = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AllEventsPage = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const urlSearch = searchParams.get('search') || '';
+
     // Search input state
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(urlSearch);
 
     // Sidebar filter states
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -59,6 +63,82 @@ const AllEventsPage = () => {
     // Mobile sidebar toggle
     const [showFilters, setShowFilters] = useState(false);
 
+    // ── API Data State ──────────────────────────────────────────────────────────
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    // Update search query when URL changes
+    useEffect(() => {
+        const queryFromUrl = searchParams.get('search');
+        if (queryFromUrl !== null) {
+            setSearchQuery(queryFromUrl);
+        }
+    }, [searchParams]);
+
+    // ── Fetch Events from API ───────────────────────────────────────────────────
+    const fetchEvents = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const params = { limit: 50 };
+            if (searchQuery.trim()) params.search = searchQuery.trim();
+            if (selectedCategory !== 'All') params.category = selectedCategory;
+            if (selectedPrice === 'Free') params.price = 'Free';
+            else if (selectedPrice === 'Paid') params.price = 'Paid';
+
+            const data = await getPublicEvents(params);
+            setEvents(data.data || []);
+        } catch {
+            setError('Failed to load events. Please refresh the page.');
+        } finally {
+            setLoading(false);
+        }
+    }, [searchQuery, selectedCategory, selectedPrice]);
+
+    // Mount par aur jab bhi filters change hon, events dobara fetch karo
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
+
+    // Client-side filtering & sorting on fetched data
+    const displayedEvents = useMemo(() => {
+        let list = [...events];
+
+        // Date filter
+        if (selectedDate) {
+            list = list.filter((ev) => {
+                if (!ev.event_date) return false;
+                const d = new Date(ev.event_date).toISOString().split('T')[0];
+                return d === selectedDate;
+            });
+        }
+
+        // Location filter
+        if (selectedLocation.trim()) {
+            const loc = selectedLocation.toLowerCase().trim();
+            list = list.filter((ev) => (ev.venue || '').toLowerCase().includes(loc));
+        }
+
+        // Sorting
+        if (sortBy === 'Date: Nearest First') {
+            list.sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
+        } else if (sortBy === 'Price: Low to High') {
+            list.sort((a, b) => {
+                const pA = parseFloat(a.price) || 0;
+                const pB = parseFloat(b.price) || 0;
+                return pA - pB;
+            });
+        } else if (sortBy === 'Price: High to Low') {
+            list.sort((a, b) => {
+                const pA = parseFloat(a.price) || 0;
+                const pB = parseFloat(b.price) || 0;
+                return pB - pA;
+            });
+        }
+
+        return list;
+    }, [events, selectedDate, selectedLocation, sortBy]);
 
     const resetFilters = () => {
         setSearchQuery('');
@@ -67,6 +147,7 @@ const AllEventsPage = () => {
         setSelectedLocation('');
         setSelectedPrice('All');
         setSortBy('Recommended');
+        setSearchParams({});
     };
 
     // Check karo koi filter active hai ya nahi (reset button dikhane ke liye)
@@ -78,7 +159,7 @@ const AllEventsPage = () => {
         selectedPrice !== 'All';
 
     // API se jo events aaye unke basis par results count
-    const resultCount = events.length;
+    const resultCount = displayedEvents.length;
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -328,9 +409,9 @@ const AllEventsPage = () => {
                                     Try Again
                                 </button>
                             </div>
-                        ) : events.length > 0 ? (
+                        ) : displayedEvents.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {events.map((event) => (
+                                {displayedEvents.map((event) => (
                                     <EventCard key={event.id} event={event} />
                                 ))}
                             </div>

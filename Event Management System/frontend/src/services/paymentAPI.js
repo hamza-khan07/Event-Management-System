@@ -1,26 +1,29 @@
-// frontend/src/services/paymentApi.js
+// frontend/src/services/paymentAPI.js
 //
 // RESPONSIBILITY: Payment API calls frontend se handle karna.
-// DRY: Axios setup ek jagah — same pattern jaise eventService.js
 
 import axios from 'axios';
 
 const api = axios.create({
     baseURL: 'http://localhost:5000/api',
-    withCredentials: true,       // JWT cookie bhejo
+    withCredentials: true,
     headers: { 'Content-Type': 'application/json' }
 });
 
+// Auth token attach karo (localStorage se)
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
+
 /**
- * JazzCash payment initiate karo.
- * Backend se form data milega → us data se HTML form auto-submit hoga.
+ * Mock/Simulated payment process karo.
  *
- * @param {number} registrationId - Jis registration ka payment karna hai
- * @returns {Object} { endpoint, formData }
+ * @param {Object} payload - { registration_id, card_number, expiry, cvv, account_name }
+ * @returns {Object} { success, paymentStatus, txn_ref, registration_id, amount }
  */
-export const initiateJazzCashPayment = async (registrationId) => {
-    const response = await api.post('/payments/jazzcash/create', {
-        registration_id: registrationId
-    });
-    return response.data; // { success, data: { endpoint, formData } }
+export const processMockPayment = async (payload) => {
+    const response = await api.post('/payments/mock/process', payload);
+    return response.data;
 };

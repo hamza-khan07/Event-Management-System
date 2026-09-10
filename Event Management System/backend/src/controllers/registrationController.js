@@ -40,8 +40,9 @@ const registerForEvent = async (req, res, next) => {
 
         // ── 1. Event exist karta hai? Aur kya woh PUBLISHED hai? ──────────────
         // Sirf PUBLISHED events pe register karna chahiye — DRAFT ya CANCELLED nahi.
+        // price bhi fetch karo taake paid/free determine ho sake
         const [events] = await db.query(
-            'SELECT id, title, capacity, status FROM events WHERE id = ?',
+            'SELECT id, title, capacity, status, price FROM events WHERE id = ?',
             [eventId]
         );
 
@@ -78,12 +79,12 @@ const registerForEvent = async (req, res, next) => {
         }
 
         // ── 3. Capacity Check ─────────────────────────────────────────────────
-        // Current registered count nikalo (sirf REGISTERED status — CANCELLED count nahi hogi)
-        // ticket_count bhi consider karo — agar 3 tickets chahiye aur sirf 2 available hain
+        // REGISTERED + CONFIRMED + PENDING dono count karo — sab active registrations hain
+        // CANCELLED exclude karo — woh seats free ho gayi hain
         const [capacityRows] = await db.query(
             `SELECT COALESCE(SUM(ticket_count), 0) as booked 
              FROM registrations 
-             WHERE event_id = ? AND status = 'REGISTERED'`,
+             WHERE event_id = ? AND status IN ('REGISTERED', 'PENDING')`,
             [eventId]
         );
 
@@ -104,7 +105,22 @@ const registerForEvent = async (req, res, next) => {
             });
         }
 
-        // ── 4. Registration Code Generate Karo ────────────────────────────────
+        // ── 4. Paid ya Free? ──────────────────────────────────────────────────
+        // price field: 'Free', '0', null → free event
+        // 'PKR 500', 'PKR 1,500' etc. → paid event
+        const priceStr = event.price || 'Free';
+        const isFree = !priceStr || 
+                       priceStr.toLowerCase() === 'free' || 
+                       priceStr === '0';
+
+        // Paid events ke liye amount parse karo
+        let numericPrice = 0;
+        if (!isFree) {
+            numericPrice = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0;
+        }
+        const totalAmount = numericPrice * ticket_count;
+
+        // ── 5. Registration Code Generate Karo ────────────────────────────────
         // Unique code generate karo — collision ki probability negligible hai lekin check karo
         let registration_code;
         let isUnique = false;
@@ -118,14 +134,33 @@ const registerForEvent = async (req, res, next) => {
             isUnique = codeCheck.length === 0;
         }
 
-        // ── 5. Registration Save Karo ─────────────────────────────────────────
+        // ── 6. Registration Save Karo ─────────────────────────────────────────
+        // Paid events → PENDING (payment baad mein → CONFIRMED)
+        // Free events → REGISTERED (directly confirmed)
+        const initialStatus = isFree ? 'REGISTERED' : 'PENDING';
+
         const [result] = await db.query(
             `INSERT INTO registrations (user_id, event_id, ticket_count, phone_number, registration_code, status)
-             VALUES (?, ?, ?, ?, ?, 'REGISTERED')`,
-            [user_id, eventId, ticket_count, phone_number || null, registration_code]
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [user_id, eventId, ticket_count, phone_number || null, registration_code, initialStatus]
         );
 
-        // ── 6. Nai registration fetch karke return karo ───────────────────────
+        // Paid events ke liye payment record bhi PENDING mein create karo (audit trail)
+        if (!isFree) {
+            const txnRef = `T${result.insertId}${Date.now()}`;
+            await db.query(
+                `INSERT INTO payments (registration_id, transaction_id, amount, status)
+                 VALUES (?, ?, ?, 'PENDING')
+                 ON DUPLICATE KEY UPDATE
+                     transaction_id = VALUES(transaction_id),
+                     amount = VALUES(amount),
+                     status = 'PENDING',
+                     updated_at = NOW()`,
+                [result.insertId, txnRef, totalAmount]
+            );
+        }
+
+        // ── 7. Nai registration fetch karke return karo ───────────────────────
         const [newReg] = await db.query(
             `SELECT r.id, r.ticket_count, r.phone_number, r.registration_code,
                     r.status, r.registered_at,
@@ -138,8 +173,14 @@ const registerForEvent = async (req, res, next) => {
 
         return res.status(201).json({
             success: true,
-            message: `Successfully registered for "${event.title}"!`,
-            data: newReg[0]
+            message: isFree
+                ? `Successfully registered for "${event.title}"!`
+                : `Registration created! Please complete payment to confirm your spot.`,
+            data: newReg[0],
+            // Frontend isko check karega — paid hone par checkout pe redirect karega
+            requiresPayment: !isFree,
+            amount: totalAmount,
+            event_title: event.title
         });
 
     } catch (error) {

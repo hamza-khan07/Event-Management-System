@@ -161,8 +161,6 @@ const jazzCashReturn = async (req, res, next) => {
         // JazzCash sab data req.body mein bhejta hai (form POST)
         const responseData = req.body;
 
-        console.log('🔔 JazzCash Return Received:', responseData); // Debug ke liye
-
         // ── 1. Hash Verification ─────────────────────────────────────────────
         // JazzCash ne jo pp_SecureHash bheja hai, use hata do
         // Baaki sab fields se hash banao aur compare karo
@@ -206,10 +204,10 @@ const jazzCashReturn = async (req, res, next) => {
                 ]
             );
 
-            // Registration status CONFIRMED kar do (agar tumhare schema mein hai)
+            // Registration status REGISTERED kar do (agar tumhare schema mein hai)
             // Agar nahi hai toh yeh line remove kar sakte ho
             await db.query(
-                `UPDATE registrations SET status = 'CONFIRMED' WHERE id = ?`,
+                `UPDATE registrations SET status = 'REGISTERED' WHERE id = ?`,
                 [registrationId]
             );
 
@@ -239,4 +237,152 @@ const jazzCashReturn = async (req, res, next) => {
     }
 };
 
-module.exports = { createJazzCashPayment, jazzCashReturn };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 3. PROCESS MOCK PAYMENT (Fake/Simulated Gateway)
+//    Route:  POST /api/payments/mock/process
+//    Access: PARTICIPANT (JWT protected)
+//    Body:   { registration_id, card_number, expiry, cvv, account_name }
+//
+// Simulation Rules:
+//   - Card number last 4 digits = '0000' → FAILED (for testing failure case)
+//   - Any other valid card number → SUCCESS
+//   - Amount already stored in payments table (created during registration)
+// ═══════════════════════════════════════════════════════════════════════════════
+const processMockPayment = async (req, res, next) => {
+    try {
+        const { registration_id, card_number, expiry, cvv, account_name } = req.body;
+        const user_id = req.user.id;
+
+        // ── 1. Input Validation ───────────────────────────────────────────────
+        if (!registration_id || !card_number || !expiry || !cvv || !account_name) {
+            return res.status(400).json({
+                success: false,
+                message: 'All payment fields are required.'
+            });
+        }
+
+        // ── 2. Registration Verify + Ownership Check ──────────────────────────
+        const [rows] = await db.query(
+            `SELECT r.id, r.user_id, r.status, r.ticket_count,
+                    e.title as event_title, e.price as event_price,
+                    p.id as payment_id, p.amount, p.status as payment_status
+             FROM registrations r
+             JOIN events e ON e.id = r.event_id
+             LEFT JOIN payments p ON p.registration_id = r.id
+             WHERE r.id = ?`,
+            [registration_id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Registration not found.' });
+        }
+
+        const reg = rows[0];
+
+        // Ownership check — sirf apni registration ka payment karo
+        if (reg.user_id !== user_id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only pay for your own registrations.'
+            });
+        }
+
+        // Already confirmed/paid check
+        if (reg.status === 'REGISTERED' || reg.payment_status === 'SUCCESS') {
+            return res.status(400).json({
+                success: false,
+                message: 'This registration is already paid and confirmed.'
+            });
+        }
+
+        if (reg.status === 'CANCELLED') {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot pay for a cancelled registration.'
+            });
+        }
+
+        // ── 3. Simulate Card Validation ───────────────────────────────────────
+        // Card number se spaces/dashes remove karo, last 4 digits check karo
+        const cleanCard = card_number.replace(/[\s\-]/g, '');
+
+        // Basic card length check (13-19 digits)
+        if (!/^\d{13,19}$/.test(cleanCard)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid card number format.'
+            });
+        }
+
+        // SIMULATION: Last 4 digits '0000' → payment fail
+        const last4 = cleanCard.slice(-4);
+        const isPaymentFailed = last4 === '0000';
+
+        // ── 4. Generate Transaction Reference ────────────────────────────────
+        const txnRef = `MOCK-${registration_id}-${Date.now()}`;
+
+        if (isPaymentFailed) {
+            // ── 4a. FAILED: payments table update karo ────────────────────────
+            await db.query(
+                `UPDATE payments 
+                 SET status = 'FAILED',
+                     gateway = 'MOCK',
+                     gateway_response = ?,
+                     updated_at = NOW()
+                 WHERE registration_id = ?`,
+                [JSON.stringify({ reason: 'Card declined — last 4 digits 0000', card_last4: last4 }), registration_id]
+            );
+
+            return res.status(200).json({
+                success: false,
+                paymentStatus: 'FAILED',
+                message: 'Payment declined. Please check your card details and try again.',
+                txn_ref: txnRef
+            });
+        }
+
+        // ── 4b. SUCCESS: payments + registrations dono update karo ────────────
+        // Payments table
+        await db.query(
+            `UPDATE payments 
+             SET status = 'SUCCESS',
+                 transaction_id = ?,
+                 gateway = 'MOCK',
+                 gateway_response = ?,
+                 paid_at = NOW(),
+                 updated_at = NOW()
+             WHERE registration_id = ?`,
+            [
+                txnRef,
+                JSON.stringify({
+                    card_last4: last4,
+                    account_name,
+                    processed_at: new Date().toISOString()
+                }),
+                registration_id
+            ]
+        );
+
+        // Registration REGISTERED karo
+        await db.query(
+            `UPDATE registrations SET status = 'REGISTERED' WHERE id = ?`,
+            [registration_id]
+        );
+
+        return res.status(200).json({
+            success: true,
+            paymentStatus: 'SUCCESS',
+            message: 'Payment successful! Your registration is now confirmed.',
+            txn_ref: txnRef,
+            registration_id,
+            amount: reg.amount
+        });
+
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+module.exports = { createJazzCashPayment, jazzCashReturn, processMockPayment };

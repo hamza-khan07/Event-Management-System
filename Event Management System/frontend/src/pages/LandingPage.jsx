@@ -78,7 +78,11 @@ const LandingPage = () => {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        navigate('/events');
+        if (searchQuery.trim()) {
+            navigate(`/events?search=${encodeURIComponent(searchQuery.trim())}`);
+        } else {
+            navigate('/events');
+        }
     };
 
     // Client-side filter on fetched API data (tab + search)

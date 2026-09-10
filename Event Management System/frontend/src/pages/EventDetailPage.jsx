@@ -11,7 +11,6 @@ import {
     Tag,
     Users,
     Globe,
-    ArrowLeft,
     Ticket,
     Clock,
     BadgeCheck,

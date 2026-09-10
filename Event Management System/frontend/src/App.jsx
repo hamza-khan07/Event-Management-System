@@ -20,6 +20,7 @@ import EditEventPage from './pages/EditEventPage';
 import AllEventsPage from './pages/AllEventsPage';
 import EventDetailPage from './pages/EventDetailPage';
 import PaymentResult from './pages/PaymentResult';
+import PaymentCheckoutPage from './pages/PaymentCheckoutPage';
 import OrganizerParticipantsPage from './pages/OrganizerParticipantsPage';
 
 function App() {
@@ -141,6 +142,16 @@ function App() {
 
 
       <Route path="/payment/result" element={<PaymentResult />} />
+
+      {/* Protected: Mock Payment Checkout */}
+      <Route
+        path="/payment/checkout"
+        element={
+          <ProtectedRoute>
+            <PaymentCheckoutPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
