@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { registerForEvent, getEventCapacity } from '../../services/registrationService';
 import { useAuth } from '../../Context/AuthContext';
+import { formatLocalDate } from '../../utils/dateUtils';
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 const RegistrationModal = ({ event, onClose, onSuccess }) => {
@@ -164,7 +165,7 @@ const RegistrationModal = ({ event, onClose, onSuccess }) => {
                         <div className="flex justify-between text-sm">
                             <span className="text-gray-500">Event Date</span>
                             <span className="font-semibold text-gray-800">
-                                {new Date(success.event_date).toLocaleDateString('en-PK', {
+                                {formatLocalDate(success.event_date, {
                                     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
                                 })}
                             </span>

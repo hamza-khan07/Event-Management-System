@@ -3,6 +3,8 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, './../.env') });
 
 // Create connection pool with promise support for async/await
+// dateStrings: ['DATE'] ensures DATE columns (event_date, registration_deadline) are
+// returned as raw 'YYYY-MM-DD' strings, preventing UTC timezone offset shifting.
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -10,7 +12,8 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    dateStrings: ['DATE']
 });
 
 const db = pool.promise();

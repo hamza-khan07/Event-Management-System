@@ -13,10 +13,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, SlidersHorizontal, X, ChevronDown, Calendar, Loader2 } from 'lucide-react';
+import { Search, SlidersHorizontal, X, ChevronDown, Calendar, Loader2, LayoutGrid, Map } from 'lucide-react';
 import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 import EventCard from '../components/landing/EventCard';
+import EventHeatMap from '../components/events/EventHeatMap';
 import { getPublicEvents } from '../services/eventService';
 
 const POPULAR_CATEGORIES = ['Music', 'Technology', 'Food', 'Art', 'Business', 'Sports'];
@@ -62,6 +63,9 @@ const AllEventsPage = () => {
 
     // Mobile sidebar toggle
     const [showFilters, setShowFilters] = useState(false);
+
+    // View toggle state (grid or map)
+    const [viewMode, setViewMode] = useState('grid');
 
     // ── API Data State ──────────────────────────────────────────────────────────
     const [events, setEvents] = useState([]);
@@ -109,7 +113,7 @@ const AllEventsPage = () => {
         if (selectedDate) {
             list = list.filter((ev) => {
                 if (!ev.event_date) return false;
-                const d = new Date(ev.event_date).toISOString().split('T')[0];
+                const d = String(ev.event_date).split('T')[0];
                 return d === selectedDate;
             });
         }
@@ -249,6 +253,28 @@ const AllEventsPage = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {/* ── View Toggle (Grid vs Map) ── */}
+                        <div className="hidden sm:flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200">
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                                    viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                                }`}
+                            >
+                                <LayoutGrid size={15} />
+                                <span>Grid</span>
+                            </button>
+                            <button
+                                onClick={() => setViewMode('map')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                                    viewMode === 'map' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                                }`}
+                            >
+                                <Map size={15} />
+                                <span>Map</span>
+                            </button>
+                        </div>
+
                         <div className="relative">
                             <select
                                 value={sortBy}
@@ -409,6 +435,8 @@ const AllEventsPage = () => {
                                     Try Again
                                 </button>
                             </div>
+                        ) : viewMode === 'map' ? (
+                            <EventHeatMap events={displayedEvents} />
                         ) : displayedEvents.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                                 {displayedEvents.map((event) => (

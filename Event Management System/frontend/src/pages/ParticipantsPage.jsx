@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
+import { formatLocalDate } from '../utils/dateUtils';
 
 const ParticipantsPage = () => {
     const { user, logout } = useAuth();
@@ -229,7 +230,7 @@ const ParticipantsPage = () => {
                                             <p className="text-sm font-medium text-gray-900">{reg.event_title}</p>
                                             <div className="flex items-center justify-between mt-1">
                                                 <p className="text-xs text-gray-500">
-                                                    {new Date(reg.event_date).toLocaleDateString()}
+                                                    {formatLocalDate(reg.event_date)}
                                                 </p>
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${reg.status === 'REGISTERED'
                                                     ? 'bg-emerald-100 text-emerald-700'

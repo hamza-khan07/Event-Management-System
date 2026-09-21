@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
+import { formatLocalDate } from '../utils/dateUtils';
 
 // ─────────────────────────────────────────────────────────────────
 // REUSABLE: EventStatusBadge
@@ -175,9 +176,9 @@ const MyEventsPage = () => {
         }
     };
 
-    // ── Date formatter (DRY helper) ──────────────────────────────
+    // ── Date formatter (DRY helper, timezone-safe) ───────────────
     const formatDate = (dateStr) =>
-        new Date(dateStr).toLocaleDateString('en-US', {
+        formatLocalDate(dateStr, {
             year: 'numeric', month: 'short', day: 'numeric'
         });
 

@@ -1,12 +1,8 @@
--- Drop tables if they exist (in reverse order of dependencies to avoid constraint errors)
-DROP TABLE IF EXISTS attendance;
-DROP TABLE IF EXISTS registrations;
-DROP TABLE IF EXISTS events;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS companies;
+-- ⚠️ NOTE: DROP TABLE statements have been REMOVED intentionally.
+-- Using CREATE TABLE IF NOT EXISTS to preserve existing data on restarts.
 
 -- 1. COMPANIES TABLE
-CREATE TABLE companies (
+CREATE TABLE IF NOT EXISTS companies (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -23,7 +19,7 @@ CREATE TABLE companies (
 );
 
 -- 2. USERS TABLE
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT NULL,
     name VARCHAR(255) NOT NULL,
@@ -37,16 +33,20 @@ CREATE TABLE users (
 );
 
 -- 3. EVENTS TABLE
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
     id INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(100),
     venue VARCHAR(255),
+    latitude DECIMAL(10, 8) NULL,
+    longitude DECIMAL(11, 8) NULL,
     event_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
+    -- Registration cutoff date: registrations are blocked after this date (required)
+    registration_deadline DATE NOT NULL,
     capacity INT UNSIGNED NOT NULL,
     price      VARCHAR(100) NULL,
     image_url  TEXT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE events (
 --   phone_number      → Emergency contact number for event organizers
 --   registration_code → Unique confirmation code (ticket ID: EVT-XXXX-XXXX)
 --   UNIQUE KEY        → Ensures a user can only register once per event (database-level constraint)
-CREATE TABLE registrations (
+CREATE TABLE IF NOT EXISTS registrations (
     id                INT AUTO_INCREMENT PRIMARY KEY,
     user_id           INT NOT NULL,
     event_id          INT NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE registrations (
 );
 
 -- 5. ATTENDANCE TABLE
-CREATE TABLE attendance (
+CREATE TABLE IF NOT EXISTS attendance (
     id INT AUTO_INCREMENT PRIMARY KEY,
     registration_id INT NOT NULL UNIQUE,
     status ENUM('PRESENT', 'ABSENT') DEFAULT 'PRESENT',
@@ -85,7 +85,8 @@ CREATE TABLE attendance (
     FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE RESTRICT
 );
 
-CREATE TABLE payments (
+-- 6. PAYMENTS TABLE
+CREATE TABLE IF NOT EXISTS payments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     registration_id INT NOT NULL,
     transaction_id VARCHAR(100) NOT NULL UNIQUE,
@@ -98,13 +99,20 @@ CREATE TABLE payments (
     paid_at DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Primary key
-    PRIMARY KEY (id),
-    
+
     -- Unique constraint: one transaction per registration
     UNIQUE KEY unique_transaction (registration_id),
-    
+
     -- Foreign key
     FOREIGN KEY (registration_id) REFERENCES registrations(id) ON DELETE CASCADE
+);
+
+-- 7. CONTACT MESSAGES TABLE
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

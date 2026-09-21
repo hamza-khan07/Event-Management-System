@@ -2,6 +2,12 @@
 //
 // RESPONSIBILITY: Dedicated Event Detail page — /events/:id
 // Data Source: Backend API — GET /api/events/public/:id
+//
+// Registration Deadline Features:
+//   - Displays registration_deadline in the Event Details info card
+//   - Shows an urgency warning banner when deadline is ≤ 3 days away
+//   - Disables the register button with a "Registration Closed" state if deadline has passed
+//   - Server-side also enforces the deadline — client-side is UX only
 
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -15,21 +21,27 @@ import {
     Clock,
     BadgeCheck,
     LogIn,
+    Lock,
+    AlertTriangle,
 } from 'lucide-react';
 import Navbar from '../components/landing/Navbar';
 import Footer from '../components/landing/Footer';
 import RegistrationModal from '../components/events/RegistrationModal';
 import { useAuth } from '../Context/AuthContext';
 import { getPublicEventById } from '../services/eventService';
+import {
+    isRegistrationClosed,
+    daysUntilDeadline,
+    formatLocalDate
+} from '../utils/dateUtils';
 
-// No longer need static ALL_EVENTS as we fetch from API.
 
 // ─── Reusable: Event Info Row ─────────────────────────────────────────────────
 // Reusable row for displaying individual event details (date, location, etc.)
-const InfoRow = ({ icon: Icon, label, value, highlight = false }) => (
+const InfoRow = ({ icon: Icon, label, value, highlight = false, iconColor = 'text-indigo-600' }) => (
     <div className="flex items-start gap-4 py-4 border-b border-gray-100 last:border-0">
-        <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-            <Icon size={16} className="text-black-600" />
+        <div className={`w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0`}>
+            <Icon size={16} className={iconColor} />
         </div>
         <div>
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</p>
@@ -40,7 +52,8 @@ const InfoRow = ({ icon: Icon, label, value, highlight = false }) => (
     </div>
 );
 
-// ─── Main Component ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 const EventDetailPage = () => {
     // Extract event ID from URL params (e.g. /events/3 -> id = '3')
     const { id } = useParams();
@@ -75,7 +88,7 @@ const EventDetailPage = () => {
         fetchEvent();
     }, [id]);
 
-    // Registration button handler
+    // Registration button handler — checks auth, then opens modal
     const handleRegisterClick = () => {
         if (!isAuthenticated) {
             navigate('/login', { state: { from: `/events/${id}` } });
@@ -84,7 +97,7 @@ const EventDetailPage = () => {
         setShowModal(true);
     };
 
-    // ── Loading State ───────────────────────────────────────────────────────────────────────
+    // ── Loading State ────────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -98,7 +111,7 @@ const EventDetailPage = () => {
     }
 
 
-    // ── Not Found State ────────────────────────────────────────────────────────────────────
+    // ── Not Found State ──────────────────────────────────────────────────────────
     if (notFound || !event) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -106,7 +119,7 @@ const EventDetailPage = () => {
                 <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
                     <Calendar size={56} className="text-gray-200 mb-5" />
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Event Not Found</h2>
-                    <p className="text-gray-500 mb-6">Yeh event exist nahi karta ya hata diya gaya hai.</p>
+                    <p className="text-gray-500 mb-6">This event does not exist or has been removed.</p>
                     <Link
                         to="/events"
                         className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition cursor-pointer"
@@ -119,25 +132,60 @@ const EventDetailPage = () => {
         );
     }
 
-    // Format API data to match component expectations
-    const title = event.title;
-    const location = event.venue;
-    const category = event.category;
-    const price = event.price || 'Free';
+    // ── Derived Display Values ───────────────────────────────────────────────────
+    const title       = event.title;
+    const location    = event.venue;
+    const category    = event.category;
+    const price       = event.price || 'Free';
     const description = event.description;
-    const capacity = `${event.capacity} Attendees`;
-    const image = event.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
+    const capacity    = `${event.capacity} Attendees`;
+    const image       = event.image_url || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
 
-    // Format Date & Time
-    const date = new Date(event.event_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+    // Format Event Date & Time (timezone-safe)
+    const date = formatLocalDate(event.event_date, { month: 'short', day: '2-digit', year: 'numeric' });
     const time = new Date(`1970-01-01T${event.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-    // Format organizer details from DB (with fallbacks if empty)
+    // ── Registration Deadline Calculations ───────────────────────────────────────
+    // isRegistrationClosed handles the smart same-day rule:
+    //   - If deadline < today         → closed
+    //   - If deadline = today = event_date → closed only once start_time is reached
+    //   - Otherwise                   → open
+    const registrationClosed = isRegistrationClosed(
+        event.registration_deadline,
+        event.event_date,
+        event.start_time
+    );
+    const daysLeft          = daysUntilDeadline(event.registration_deadline);
+    const deadlineFormatted = event.registration_deadline
+        ? formatLocalDate(event.registration_deadline, {
+            weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+          })
+        : null;
+
+    // Detect same-day deadline: deadline date == event date
+    const todayStr       = new Date().toLocaleDateString('sv-SE');
+    const deadlineDayStr = String(event.registration_deadline || '').split('T')[0];
+    const eventDayStr    = String(event.event_date || '').split('T')[0];
+    const isSameDayDeadline = deadlineDayStr === eventDayStr && deadlineDayStr === todayStr;
+
+    // Minutes remaining until event start_time (for same-day deadline countdown)
+    let minutesUntilStart = null;
+    if (isSameDayDeadline && event.start_time && !registrationClosed) {
+        const [hh, mm] = event.start_time.split(':').map(Number);
+        const startMs = new Date();
+        startMs.setHours(hh, mm, 0, 0);
+        minutesUntilStart = Math.ceil((startMs - new Date()) / (1000 * 60));
+    }
+
+    // Show urgency banner when deadline is within 3 days (but registration not yet closed)
+    const showUrgencyBanner = !registrationClosed && daysLeft !== null && daysLeft <= 3;
+
+    // Organizer details with fallbacks for missing DB values
     const organizer = {
-        name: event.organizer_name || 'Organizer',
+        name:    event.organizer_name || 'Organizer',
         tagline: event.organizer_tagline || 'Creating unforgettable live experiences in Pakistan.',
-        logo: event.organizer_logo || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?auto=format&fit=crop&w=200&q=80',
-        banner: event.organizer_banner || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80',
+        logo:    event.organizer_logo || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?auto=format&fit=crop&w=200&q=80',
+        banner:  event.organizer_banner || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80',
         website: event.organizer_website || 'eventify.pk',
     };
 
@@ -147,8 +195,7 @@ const EventDetailPage = () => {
             <Navbar />
 
             {/* ── 1. FULL-WIDTH COMPANY BANNER ─────────────────────────────── */}
-            {/* Full-width company banner at the top */}
-            <div className="relative w-full h-72 sm:h-80 lg:h-96 overflow-hidden ">
+            <div className="relative w-full h-72 sm:h-80 lg:h-96 overflow-hidden">
                 {/* Banner image displaying organizer branding */}
                 <img
                     src={organizer.banner}
@@ -158,14 +205,11 @@ const EventDetailPage = () => {
                 {/* Gradient overlay to enhance text contrast and readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-950/85 via-gray-900/50 to-transparent" />
 
-
-
                 {/* ── 2. COMPANY PROFILE SECTION — overlaid over banner ────── */}
-                {/* Company logo and profile information */}
                 <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 lg:px-16 pb-6">
                     <div className="max-w-6xl mx-auto flex items-end gap-5 flex-wrap">
 
-                        {/* Company Logo / Profile Pic */}
+                        {/* Company Logo */}
                         <div className="relative shrink-0">
                             <img
                                 src={organizer.logo}
@@ -195,7 +239,6 @@ const EventDetailPage = () => {
             </div>
 
             {/* ── 3. COMPANY EXTRA DETAILS BAR ────────────────────────────── */}
-            {/* Company website and description below banner */}
             <div className="bg-white border-b border-gray-100 shadow-sm">
                 <div className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-16 py-4 flex items-center gap-6 flex-wrap">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -218,7 +261,7 @@ const EventDetailPage = () => {
             <div className="flex-1 max-w-10xl mx-auto w-full px-4 sm:px-8 lg:px-16 py-2">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                    {/* ── LEFT: Event Image + Description ────────────────────── */}
+                    {/* ── LEFT: Event Image + Description ─────────────────── */}
                     <div className="lg:col-span-2 space-y-6">
 
                         {/* Event Thumbnail */}
@@ -250,8 +293,7 @@ const EventDetailPage = () => {
                         </div>
                     </div>
 
-                    {/* ── RIGHT: Event Details Card + Registration Button ─────── */}
-                    {/* Event Details Card & Registration CTA */}
+                    {/* ── RIGHT: Event Details Card + Registration Button ──── */}
                     <div className="space-y-5">
 
                         {/* Event Details Card */}
@@ -261,33 +303,117 @@ const EventDetailPage = () => {
                             </h3>
 
                             {/* DRY: InfoRow component renders all detail items */}
-                            <InfoRow icon={Calendar} label="Date" value={date} />
-                            <InfoRow icon={Clock} label="Time" value={time} />
-                            <InfoRow icon={MapPin} label="Location" value={location} />
-                            <InfoRow icon={Users} label="Capacity" value={capacity} />
-                            <InfoRow icon={Ticket} label="Ticket Price" value={price} highlight />
+                            <InfoRow icon={Calendar}  label="Date"          value={date} />
+                            <InfoRow icon={Clock}     label="Time"          value={time} />
+                            <InfoRow icon={MapPin}    label="Location"      value={location} />
+                            <InfoRow icon={Users}     label="Capacity"      value={capacity} />
+                            <InfoRow icon={Ticket}    label="Ticket Price"  value={price} highlight />
+
+                            {/* Registration Deadline row — only shown when deadline exists */}
+                            {deadlineFormatted && (
+                                <InfoRow
+                                    icon={registrationClosed ? Lock : Clock}
+                                    label="Registration Deadline"
+                                    value={registrationClosed
+                                        ? isSameDayDeadline
+                                            ? `${deadlineFormatted} — Closed at event start`
+                                            : `${deadlineFormatted} (Closed)`
+                                        : daysLeft === 0
+                                            ? isSameDayDeadline
+                                                ? `${deadlineFormatted} — Closes at ${time}`
+                                                : `${deadlineFormatted} — Closes Today!`
+                                            : deadlineFormatted
+                                    }
+                                    iconColor={registrationClosed
+                                        ? 'text-red-500'
+                                        : daysLeft !== null && daysLeft <= 3
+                                            ? 'text-amber-500'
+                                            : 'text-indigo-600'
+                                    }
+                                />
+                            )}
                         </div>
 
-                        {/* ── REGISTRATION BUTTON ─────────────────────────────── */}
+                        {/* ── URGENCY BANNER — shown when deadline is ≤ 3 days away ── */}
+                        {/* This creates urgency and encourages users to register quickly */}
+                        {showUrgencyBanner && (
+                            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                                <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-semibold text-amber-800">
+                                        {isSameDayDeadline
+                                            ? minutesUntilStart !== null && minutesUntilStart <= 60
+                                                ? `Registration closes in ${minutesUntilStart} minute${minutesUntilStart === 1 ? '' : 's'}!`
+                                                : `Registration closes at ${time} — today!`
+                                            : daysLeft === 0
+                                                ? 'Registration closes today!'
+                                                : `Only ${daysLeft} day${daysLeft === 1 ? '' : 's'} left to register!`
+                                        }
+                                    </p>
+                                    <p className="text-xs text-amber-600 mt-0.5">
+                                        {isSameDayDeadline
+                                            ? `You can register until the event starts at ${time}.`
+                                            : `Deadline: ${deadlineFormatted}. Register before it's too late.`
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── REGISTRATION CLOSED BANNER — shown when registration is locked ── */}
+                        {/* Locked either because deadline date passed, or event already started (same-day case) */}
+                        {registrationClosed && (
+                            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                                <Lock size={18} className="text-red-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="text-sm font-semibold text-red-800">
+                                        Registration is closed
+                                    </p>
+                                    <p className="text-xs text-red-600 mt-0.5">
+                                        {isSameDayDeadline
+                                            ? `The event has already started (${time}). Registrations are no longer accepted.`
+                                            : `The registration deadline (${deadlineFormatted}) has passed.`
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── REGISTRATION BUTTON / CLOSED STATE ──────────────── */}
                         {/* Behavior:
-                            - Logged out → Redirect to login (with return URL)
-                            - Logged in → Open registration modal */}
-                        <button
-                            onClick={handleRegisterClick}
-                            className="block w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-base rounded-2xl text-center shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200 cursor-pointer"
-                        >
-                            {isAuthenticated ? (
-                                <>
-                                    <Ticket size={18} className="inline mr-2" />
-                                    Register Now — {price}
-                                </>
-                            ) : (
-                                <>
-                                    <LogIn size={18} className="inline mr-2" />
-                                    Login to Register
-                                </>
-                            )}
-                        </button>
+                            - registrationClosed → Shows locked, disabled button
+                            - Logged out         → Redirect to login (with return URL)
+                            - Logged in + open   → Open registration modal
+                          Same-day rule: if deadline == event_date, locks at start_time not midnight */}
+                        {registrationClosed ? (
+                            // Registration is locked — disabled, no-interaction state
+                            <div
+                                id="register-closed-btn"
+                                className="block w-full py-4 px-6 bg-gray-100 text-gray-400 font-bold text-base rounded-2xl text-center flex items-center justify-center gap-2 cursor-not-allowed"
+                            >
+                                <Lock size={18} />
+                                Registration Closed
+                            </div>
+                        ) : (
+                            // Registration is open — active button
+                            <button
+                                id="register-now-btn"
+                                onClick={handleRegisterClick}
+                                className="block w-full py-4 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-base rounded-2xl text-center shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200 cursor-pointer"
+                            >
+                                {isAuthenticated ? (
+                                    <>
+                                        <Ticket size={18} className="inline mr-2" />
+                                        Register Now — {price}
+                                    </>
+                                ) : (
+                                    <>
+                                        <LogIn size={18} className="inline mr-2" />
+                                        Login to Register
+                                    </>
+                                )}
+                            </button>
+                        )}
 
                         {/* Secondary: Back to all events */}
                         <Link
@@ -296,8 +422,6 @@ const EventDetailPage = () => {
                         >
                             Browse More Events
                         </Link>
-
-
                     </div>
                 </div>
             </div>
@@ -305,9 +429,10 @@ const EventDetailPage = () => {
             {/* Shared Footer — DRY */}
             <Footer />
 
-            {/* ── REGISTRATION MODAL ────────────────────────────────────────── */}
-            {/* Conditional render: mount modal only when showModal is true */}
-            {showModal && (
+            {/* ── REGISTRATION MODAL ─────────────────────────────────────────── */}
+            {/* Only mounted when showModal is true and deadline has NOT passed */}
+            {/* Modal guard: only mount if registration is still open */}
+            {showModal && !registrationClosed && (
                 <RegistrationModal
                     event={{ id, title, price, capacity }}
                     onClose={() => setShowModal(false)}

@@ -4,12 +4,18 @@
 //
 // UX Features:
 //   1. Fully clickable card with pointer cursor, elevation, and ring hover effects.
-//   2. "Register Now" action-oriented CTA button.
-//   3. Seamless navigation to the event detail page (/events/:id).
+//   2. "Register Now" CTA button — changes to "Registration Closed" when deadline passed.
+//   3. Registration deadline badge shown when deadline is approaching (within 7 days).
+//   4. Seamless navigation to the event detail page (/events/:id).
 
 import React from 'react';
-import { Calendar, MapPin, Tag, Ticket } from 'lucide-react';
+import { Calendar, MapPin, Tag, Ticket, Lock, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import {
+    isRegistrationClosed,
+    daysUntilDeadline,
+    formatLocalDate
+} from '../../utils/dateUtils';
 
 const EventCard = ({ event }) => {
     const navigate = useNavigate();
@@ -21,10 +27,10 @@ const EventCard = ({ event }) => {
     const image    = event.image_url || event.image ||
         'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
 
-    // Format date
+    // Format event date (timezone-safe)
     const rawDate = event.event_date || event.date;
     const date = rawDate
-        ? new Date(rawDate).toLocaleDateString('en-US', {
+        ? formatLocalDate(rawDate, {
             month: 'short', day: '2-digit', year: 'numeric'
           })
         : '';
@@ -37,6 +43,29 @@ const EventCard = ({ event }) => {
           })
         : rawTime || '';
 
+    // ── Registration Deadline Logic ─────────────────────────────────────────
+    // isRegistrationClosed handles the same-day rule: if deadline == event_date,
+    // the card stays open until start_time (not just midnight).
+    const registrationClosed = isRegistrationClosed(
+        event.registration_deadline,
+        event.event_date,
+        event.start_time
+    );
+    const daysLeft = daysUntilDeadline(event.registration_deadline);
+
+    // Detect same-day deadline for badge label refinement
+    const todayStr       = new Date().toLocaleDateString('sv-SE');
+    const deadlineDayStr = String(event.registration_deadline || '').split('T')[0];
+    const eventDayStr2   = String(event.event_date || '').split('T')[0];
+    const isSameDayDeadline = deadlineDayStr === eventDayStr2 && deadlineDayStr === todayStr;
+
+    // Format deadline for display (e.g. "Sep 15, 2026")
+    const deadlineFormatted = event.registration_deadline
+        ? formatLocalDate(event.registration_deadline, {
+            month: 'short', day: '2-digit', year: 'numeric'
+          })
+        : null;
+
     // Navigate to event details
     const goToDetail = () => navigate(`/events/${event.id}`);
 
@@ -47,25 +76,54 @@ const EventCard = ({ event }) => {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && goToDetail()}
-            className="
-                bg-white rounded-2xl border border-gray-100 shadow-sm
-                hover:shadow-xl hover:-translate-y-1 hover:ring-2 hover:ring-indigo-200
+            className={`
+                bg-white rounded-2xl border shadow-sm
+                hover:shadow-xl hover:-translate-y-1
                 transition-all duration-200 overflow-hidden flex flex-col group
                 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400
-            "
+                ${registrationClosed
+                    ? 'border-gray-200 opacity-80'        // Slightly muted when closed
+                    : 'border-gray-100 hover:ring-2 hover:ring-indigo-200'
+                }
+            `}
         >
-            {/* ── Event Thumbnail ─────────────────────────────────────────────── */}
+            {/* ── Event Thumbnail ─────────────────────────────────────── */}
             <div className="relative aspect-[16/10] overflow-hidden bg-gray-100">
                 <img
                     src={image}
                     alt={title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ease-out"
+                    className={`w-full h-full object-cover transition-transform duration-300 ease-out
+                        ${registrationClosed ? 'grayscale-[20%]' : 'group-hover:scale-105'}`}
                     loading="lazy"
                 />
-                {/* Price badge */}
+
+                {/* Price badge — top right */}
                 <div className="absolute top-3 right-3 bg-white px-3 py-1 rounded-full text-xs font-semibold text-gray-800 shadow-sm">
                     {price}
                 </div>
+
+                {/* Deadline badge — top left, only shown when deadline exists */}
+                {deadlineFormatted && (
+                    <div className={`absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm
+                        ${registrationClosed
+                            ? 'bg-red-600 text-white'          // Red when closed
+                            : daysLeft !== null && daysLeft <= 3
+                                ? 'bg-amber-500 text-white'    // Amber when closing soon (≤3 days)
+                                : 'bg-white/90 text-gray-700'  // White when plenty of time
+                        }`}
+                    >
+                        {registrationClosed
+                            ? <><Lock size={10} /> Closed</>
+                            : isSameDayDeadline
+                                ? <><Clock size={10} /> Closes at {time}</>
+                                : daysLeft === 0
+                                    ? <><Clock size={10} /> Closes Today</>
+                                    : daysLeft !== null && daysLeft <= 3
+                                        ? <><Clock size={10} /> {daysLeft}d left</>
+                                        : <><Clock size={10} /> Reg. by {deadlineFormatted}</>
+                        }
+                    </div>
+                )}
             </div>
 
             {/* ── Content Body ────────────────────────────────────────────────── */}
@@ -95,26 +153,34 @@ const EventCard = ({ event }) => {
                     </div>
                 </div>
 
-                {/* ── Register Button ─────────────────────────────────────────── */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation(); // Avoid event propagation to parent container
-                        goToDetail();
-                    }}
-                    className="
-                        w-full mt-2 py-2.5 px-4
-                        bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
-                        text-white text-sm font-semibold
-                        rounded-xl text-center
-                        transition-all duration-200
-                        flex items-center justify-center gap-2
-                        shadow-sm hover:shadow-md
-                        cursor-pointer
-                    "
-                >
-                    <Ticket size={15} />
-                    <span>Register Now</span>
-                </button>
+                {/* ── Register Button / Closed State ───────────────────── */}
+                {registrationClosed ? (
+                    // Registration closed state — non-interactive visual indicator
+                    <div className="w-full mt-2 py-2.5 px-4 bg-gray-100 text-gray-400 text-sm font-semibold rounded-xl text-center flex items-center justify-center gap-2 cursor-default">
+                        <Lock size={15} />
+                        <span>Registration Closed</span>
+                    </div>
+                ) : (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click from double-firing
+                            goToDetail();
+                        }}
+                        className="
+                            w-full mt-2 py-2.5 px-4
+                            bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+                            text-white text-sm font-semibold
+                            rounded-xl text-center
+                            transition-all duration-200
+                            flex items-center justify-center gap-2
+                            shadow-sm hover:shadow-md
+                            cursor-pointer
+                        "
+                    >
+                        <Ticket size={15} />
+                        <span>Register Now</span>
+                    </button>
+                )}
             </div>
         </div>
     );

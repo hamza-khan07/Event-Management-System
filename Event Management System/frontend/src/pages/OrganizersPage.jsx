@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
+import { formatLocalDate } from '../utils/dateUtils';
 
 const OrganizersPage = () => {
     const { user, logout } = useAuth();
@@ -285,7 +286,7 @@ const OrganizersPage = () => {
                                             <p className="text-sm font-medium text-gray-900">{event.title}</p>
                                             <div className="flex items-center justify-between mt-1">
                                                 <p className="text-xs text-gray-500">
-                                                    {new Date(event.event_date).toLocaleDateString()}
+                                                    {formatLocalDate(event.event_date)}
                                                 </p>
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${event.status === 'PUBLISHED'
                                                     ? 'bg-emerald-100 text-emerald-700'

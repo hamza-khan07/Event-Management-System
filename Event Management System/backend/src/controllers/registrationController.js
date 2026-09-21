@@ -35,8 +35,9 @@ const registerForEvent = async (req, res, next) => {
         const { ticket_count = 1, phone_number = null } = req.body;
 
         // ── 1. Check if event exists and is PUBLISHED ────────────────────────
+        // Fetch event_date and start_time as well — needed for the same-day deadline rule.
         const [events] = await db.query(
-            'SELECT id, title, capacity, status, price FROM events WHERE id = ?',
+            'SELECT id, title, capacity, status, price, registration_deadline, event_date, start_time FROM events WHERE id = ?',
             [eventId]
         );
 
@@ -52,6 +53,43 @@ const registerForEvent = async (req, res, next) => {
                 success: false,
                 message: 'Registrations are closed. This event has been cancelled.'
             });
+        }
+
+        // ── Registration Deadline Check ──────────────────────────────────────
+        // Server-side enforcement — the frontend also shows a disabled button,
+        // but this is the authoritative security gate.
+        //
+        // Same-day rule: if the deadline date == the event date, registration
+        // stays open until the event's start_time (not just midnight).
+        // Example: event on Oct 10 at 3 PM, deadline also Oct 10 →
+        //   allow registration until 3:00 PM on Oct 10, then lock.
+        if (event.registration_deadline) {
+            const now          = new Date();
+            const todayStr     = now.toLocaleDateString('sv-SE');          // 'YYYY-MM-DD'
+            const deadlineStr  = String(event.registration_deadline).split('T')[0];
+            const eventDateStr = String(event.event_date).split('T')[0];
+
+            if (todayStr > deadlineStr) {
+                // Deadline date has completely passed
+                return res.status(400).json({
+                    success: false,
+                    message: 'Registration deadline has passed. This event is no longer accepting registrations.'
+                });
+            }
+
+            if (todayStr === deadlineStr && deadlineStr === eventDateStr && event.start_time) {
+                // Same-day deadline: check if we have already passed the start_time
+                const [hh, mm] = event.start_time.split(':').map(Number);
+                const startDateTime = new Date();
+                startDateTime.setHours(hh, mm, 0, 0);
+
+                if (now >= startDateTime) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Registration is closed. The event has already started.'
+                    });
+                }
+            }
         }
 
         // ── 2. Duplicate registration check ──────────────────────────────────

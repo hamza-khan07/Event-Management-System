@@ -23,6 +23,7 @@ import {
     PieChart, Pie, Cell
 } from 'recharts';
 import { TrendingUp, Calendar, Users, Layers, BarChart2 } from 'lucide-react';
+import { formatLocalDate } from '../utils/dateUtils';
 import StatCard from '../components/dashboard/StatCard';
 import Sidebar from '../components/dashboard/Sidebar';
 
@@ -363,8 +364,8 @@ const OrganizerDashboardPage = () => {
                                                         {event.title}
                                                     </td>
                                                     <td className="py-3 text-sm text-gray-600">
-                                                        {/* Formatted date */}
-                                                        {new Date(event.event_date).toLocaleDateString('en-US', {
+                                                        {/* Formatted date (timezone-safe) */}
+                                                        {formatLocalDate(event.event_date, {
                                                             year: 'numeric',
                                                             month: 'short',
                                                             day: 'numeric'

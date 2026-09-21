@@ -24,3 +24,10 @@ export const getPublicEventById = async (id) => {
     const response = await api.get(`/events/public/${id}`);
     return response.data;   // { success, data: { id, title, ... } }
 };
+
+// ─── Get Heatmap Data ────────────────────────────────────────────────────────
+// Fetches lightweight aggregated event coordinates
+export const getHeatmapData = async () => {
+    const response = await api.get('/events/public/heatmap');
+    return response.data;
+};

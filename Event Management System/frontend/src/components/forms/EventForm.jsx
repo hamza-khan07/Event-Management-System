@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { toDateInputValue } from '../../utils/dateUtils';
 
 const EVENT_CATEGORIES = [
     'Conference', 'Workshop', 'Seminar', 'Webinar',
@@ -45,7 +46,9 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
 
     const [formData, setFormData] = useState({
         title: '', description: '', category: '', venue: '',
-        event_date: '', start_time: '', end_time: '', capacity: '',
+        event_date: '', start_time: '', end_time: '',
+        registration_deadline: '',   // Required cutoff: users cannot register after this date
+        capacity: '',
         status: 'DRAFT',
         price: 'Free',
         image_url: ''
@@ -59,9 +62,8 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
     // Pre-populate fields in edit mode
     useEffect(() => {
         if (isEdit && eventData) {
-            const formattedDate = eventData.event_date
-                ? new Date(eventData.event_date).toISOString().split('T')[0]
-                : '';
+            // Timezone-safe date extraction: avoids UTC shifting
+            const formattedDate = toDateInputValue(eventData.event_date);
 
             // Format "HH:MM:SS" time string down to "HH:MM" for HTML input[type=time]
             const trimTime = (t) => t ? t.substring(0, 5) : '';
@@ -69,6 +71,9 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             const rawPrice = eventData.price || 'Free';
             const isEventFree = !rawPrice || rawPrice.trim().toLowerCase() === 'free' || rawPrice.trim() === '0';
             setIsFree(isEventFree);
+
+            // Timezone-safe deadline extraction: avoids UTC shifting
+            const formattedDeadline = toDateInputValue(eventData.registration_deadline);
 
             setFormData({
                 title: eventData.title || '',
@@ -78,6 +83,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 event_date: formattedDate,
                 start_time: trimTime(eventData.start_time),
                 end_time: trimTime(eventData.end_time),
+                registration_deadline: formattedDeadline,   // Pre-populate from existing event
                 capacity: eventData.capacity || '',
                 status: eventData.status || 'DRAFT',
                 price: isEventFree ? 'Free' : rawPrice,
@@ -94,7 +100,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         setApiError('');
     };
 
-    // Client-side validation to provide immediate user feedback
+    // Client-side validation to provide immediate user feedback before API call
     const validate = () => {
         const newErrors = {};
         if (!formData.title.trim() || formData.title.trim().length < 3)
@@ -107,6 +113,14 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             newErrors.end_time = 'End time is required.';
         if (formData.start_time && formData.end_time && formData.end_time <= formData.start_time)
             newErrors.end_time = 'End time must be after start time.';
+
+        // Registration deadline: required and must not be after the event date
+        if (!formData.registration_deadline)
+            newErrors.registration_deadline = 'Registration deadline is required.';
+        if (formData.registration_deadline && formData.event_date &&
+            formData.registration_deadline > formData.event_date)
+            newErrors.registration_deadline = 'Registration deadline cannot be after the event date.';
+
         if (!formData.capacity || isNaN(parseInt(formData.capacity)) || parseInt(formData.capacity) < 1)
             newErrors.capacity = 'Capacity must be a positive number.';
 
@@ -167,7 +181,8 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         submitWithStatus('PUBLISHED');
     };
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Local date string in YYYY-MM-DD format (avoids UTC offset shifts)
+    const todayStr = new Date().toLocaleDateString('sv-SE');
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -299,6 +314,23 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                             className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 ${errors.end_time ? 'border-red-300 bg-red-50' : 'border-gray-200'}`} />
                     </FormField>
                 </div>
+
+                {/* Registration Deadline — required field. max is set to event_date so the
+                    browser date picker prevents the organizer from selecting a date past the event. */}
+                <FormField label="Registration Deadline" required error={errors.registration_deadline}>
+                    <input
+                        type="date"
+                        name="registration_deadline"
+                        value={formData.registration_deadline}
+                        onChange={handleChange}
+                        min={todayStr}
+                        max={formData.event_date || undefined}  // Cannot set deadline after event date
+                        className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 ${errors.registration_deadline ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                        After this date, users will not be able to register for this event.
+                    </p>
+                </FormField>
             </SectionCard>
 
             <SectionCard title="Venue & Capacity">

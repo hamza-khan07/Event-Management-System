@@ -7,7 +7,8 @@ const db = require('../config/db');
 //    Route: POST /api/events/create
 //    Access: ORGANIZER only (creates event for their associated company)
 //
-// Company ID is extracted securely from the JWT payload.
+// Company ID is extracted securely from the JWT payload (never from the body).
+// registration_deadline is required and stored as a DATE column.
 // ─────────────────────────────────────────────────────────────────
 const createEvent = async (req, res, next) => {
     try {
@@ -19,6 +20,7 @@ const createEvent = async (req, res, next) => {
             event_date,
             start_time,
             end_time,
+            registration_deadline,   // Required cutoff date for registrations
             capacity,
             status,
             price,        // Ticket price — e.g., "Free" or "PKR 2,500"
@@ -47,11 +49,12 @@ const createEvent = async (req, res, next) => {
         const allowedStatuses = ['DRAFT', 'PUBLISHED'];
         const eventStatus = status && allowedStatuses.includes(status) ? status : 'DRAFT';
 
-        // ── DB Insert ──
+        // ── DB Insert — includes registration_deadline ──
         const [result] = await db.query(
             `INSERT INTO events 
-                (company_id, title, description, category, venue, event_date, start_time, end_time, capacity, status, price, image_url)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (company_id, title, description, category, venue, event_date, start_time, end_time,
+                 registration_deadline, capacity, status, price, image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 company_id,
                 title.trim(),
@@ -61,6 +64,7 @@ const createEvent = async (req, res, next) => {
                 event_date,
                 start_time,
                 end_time,
+                registration_deadline,   // Stored as YYYY-MM-DD DATE string
                 capacity,
                 eventStatus,
                 price ? price.trim() : 'Free',
@@ -89,6 +93,7 @@ const createEvent = async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────
 // 2. GET MY EVENTS (List of events for organizer's company)
 //    Route: GET /api/events/my-events?search=...&status=...&page=1&limit=10
+//    registration_deadline is included so the organizer dashboard can display it.
 // ─────────────────────────────────────────────────────────────────
 const getMyEvents = async (req, res, next) => {
     try {
@@ -123,14 +128,15 @@ const getMyEvents = async (req, res, next) => {
         const dataQuery = `
             SELECT 
                 e.id, e.title, e.description, e.category, e.venue, e.event_date,
-                e.start_time, e.end_time, e.capacity, e.price, e.image_url, e.status, e.created_at,
+                e.start_time, e.end_time, e.registration_deadline,
+                e.capacity, e.price, e.image_url, e.status, e.created_at,
                 COUNT(r.id) as registrations
             FROM events e
             LEFT JOIN registrations r ON r.event_id = e.id AND r.status = 'REGISTERED'
             ${baseWhere}
             GROUP BY e.id, e.title, e.description, e.category, e.venue,
-                     e.event_date, e.start_time, e.end_time, e.capacity,
-                     e.price, e.image_url, e.status, e.created_at
+                     e.event_date, e.start_time, e.end_time, e.registration_deadline,
+                     e.capacity, e.price, e.image_url, e.status, e.created_at
             ORDER BY e.created_at DESC
             LIMIT ? OFFSET ?
         `;
@@ -204,13 +210,19 @@ const updateEventStatus = async (req, res, next) => {
 // 4. UPDATE EVENT (Edit)
 //    Route: PUT /api/events/:id
 //    Access: ORGANIZER only
+//    Includes registration_deadline in the updatable fields.
 // ─────────────────────────────────────────────────────────────────
 const updateEvent = async (req, res, next) => {
     try {
         const { id } = req.params;
         const company_id = req.user.company_id;
 
-        const { title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url, status } = req.body;
+        const {
+            title, description, category, venue,
+            event_date, start_time, end_time,
+            registration_deadline,   // Updated deadline (must be <= event_date)
+            capacity, price, image_url, status
+        } = req.body;
 
         // 1. Ownership Check
         const [events] = await db.query(
@@ -233,22 +245,24 @@ const updateEvent = async (req, res, next) => {
         const allowedStatuses = ['DRAFT', 'PUBLISHED'];
         const newStatus = status && allowedStatuses.includes(status) ? status : null;
 
-        // 4. Execute update query
+        // 4. Execute update — COALESCE keeps the existing DB value if a field is not provided
         await db.query(
             `UPDATE events 
-             SET title = COALESCE(?, title),
-                 description = COALESCE(?, description),
-                 category = COALESCE(?, category),
-                 venue = COALESCE(?, venue),
-                 event_date = COALESCE(?, event_date),
-                 start_time = COALESCE(?, start_time),
-                 end_time = COALESCE(?, end_time),
-                 capacity = COALESCE(?, capacity),
-                 price = COALESCE(?, price),
-                 image_url = COALESCE(?, image_url),
-                 status = COALESCE(?, status)
+             SET title                 = COALESCE(?, title),
+                 description           = COALESCE(?, description),
+                 category              = COALESCE(?, category),
+                 venue                 = COALESCE(?, venue),
+                 event_date            = COALESCE(?, event_date),
+                 start_time            = COALESCE(?, start_time),
+                 end_time              = COALESCE(?, end_time),
+                 registration_deadline = COALESCE(?, registration_deadline),
+                 capacity              = COALESCE(?, capacity),
+                 price                 = COALESCE(?, price),
+                 image_url             = COALESCE(?, image_url),
+                 status                = COALESCE(?, status)
              WHERE id = ?`,
-            [title, description, category, venue, event_date, start_time, end_time, capacity, price, image_url, newStatus, id]
+            [title, description, category, venue, event_date, start_time, end_time,
+             registration_deadline, capacity, price, image_url, newStatus, id]
         );
 
         const statusMsg = newStatus === 'PUBLISHED'
@@ -306,6 +320,10 @@ const deleteEvent = async (req, res, next) => {
 // 6. GET PUBLIC EVENTS (Publicly accessible list of published events)
 //    Route: GET /api/events/public?search=&category=&page=1&limit=9
 //    Access: Public
+//
+//    AUTO-HIDE RULE: Events whose event_date is before today are excluded.
+//    This is done at the SQL level using CURDATE() — no cron job needed.
+//    The day after an event occurs, it automatically disappears from public listings.
 // ─────────────────────────────────────────────────────────────────
 const getPublicEvents = async (req, res, next) => {
     try {
@@ -314,8 +332,9 @@ const getPublicEvents = async (req, res, next) => {
         const limitNum = parseInt(limit);
         const offset = (pageNum - 1) * limitNum;
 
-        // Base filter: Only PUBLISHED events are accessible publicly
-        let baseWhere = "WHERE e.status = 'PUBLISHED'";
+        // Base filter: Only PUBLISHED events that haven't passed yet.
+        // e.event_date >= CURDATE() ensures events are hidden the day AFTER they occur.
+        let baseWhere = "WHERE e.status = 'PUBLISHED' AND e.event_date >= CURDATE()";
         const params = [];
 
         // Search filter on title, venue, or description
@@ -341,7 +360,9 @@ const getPublicEvents = async (req, res, next) => {
             SELECT
                 e.id, e.title, e.description, e.category,
                 e.venue, e.event_date, e.start_time, e.end_time,
+                e.registration_deadline,
                 e.capacity, e.price, e.image_url, e.status,
+                e.latitude, e.longitude,
                 c.name as organizer_name,
                 c.logo as organizer_logo,
                 c.banner as organizer_banner,
@@ -379,6 +400,8 @@ const getPublicEvents = async (req, res, next) => {
 // 7. GET SINGLE PUBLIC EVENT BY ID
 //    Route: GET /api/events/public/:id
 //    Access: Public
+//    registration_deadline is included so the frontend can show the deadline
+//    and conditionally disable the register button.
 // ─────────────────────────────────────────────────────────────────
 const getPublicEventById = async (req, res, next) => {
     try {
@@ -388,6 +411,7 @@ const getPublicEventById = async (req, res, next) => {
             `SELECT
                 e.id, e.title, e.description, e.category,
                 e.venue, e.event_date, e.start_time, e.end_time,
+                e.registration_deadline,
                 e.capacity, e.price, e.image_url, e.status,
                 c.name as organizer_name,
                 c.id   as organizer_id,
@@ -411,6 +435,28 @@ const getPublicEventById = async (req, res, next) => {
     }
 };
 
+// 8. GET HEATMAP DATA (Lightweight API for Map View)
+//    Route: GET /api/events/public/heatmap
+//    Access: Public
+// ─────────────────────────────────────────────────────────────────
+const getHeatmapData = async (req, res, next) => {
+    try {
+        // Fetch only upcoming published events that have coordinates
+        const [events] = await db.query(
+            `SELECT id, title, category, latitude, longitude, event_date 
+             FROM events 
+             WHERE status = 'PUBLISHED' 
+             AND event_date >= CURDATE()
+             AND latitude IS NOT NULL 
+             AND longitude IS NOT NULL`
+        );
+
+        res.status(200).json({ success: true, data: events });
+    } catch (error) {
+        next(error);
+    }
+};
+
 
 module.exports = {
     createEvent,
@@ -419,5 +465,6 @@ module.exports = {
     updateEvent,
     deleteEvent,
     getPublicEvents,
-    getPublicEventById
+    getPublicEventById,
+    getHeatmapData
 };

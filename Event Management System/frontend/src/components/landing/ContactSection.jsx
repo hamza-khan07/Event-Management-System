@@ -4,6 +4,7 @@
 
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare } from 'lucide-react';
+import axios from 'axios';
 
 const INITIAL_FORM_STATE = {
     name: '',
@@ -14,7 +15,7 @@ const INITIAL_FORM_STATE = {
 
 const ContactSection = () => {
     const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-    const [status, setStatus] = useState({ submitted: false, loading: false });
+    const [status, setStatus] = useState({ submitted: false, loading: false, error: null });
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -24,15 +25,22 @@ const ContactSection = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setStatus({ submitted: false, loading: true });
+        setStatus({ submitted: false, loading: true, error: null });
 
-        // Simulate clean asynchronous submission
-        setTimeout(() => {
-            setStatus({ submitted: true, loading: false });
+        try {
+            await axios.post('http://localhost:5000/api/contact', formData);
+            setStatus({ submitted: true, loading: false, error: null });
             setFormData(INITIAL_FORM_STATE);
-        }, 600);
+        } catch (error) {
+            console.error('Contact submission error:', error);
+            setStatus({ 
+                submitted: false, 
+                loading: false, 
+                error: error.response?.data?.message || 'Something went wrong. Please try again.' 
+            });
+        }
     };
 
     const handleReset = () => {
@@ -185,6 +193,12 @@ const ContactSection = () => {
                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
                                     />
                                 </div>
+
+                                {status.error && (
+                                    <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 font-medium">
+                                        {status.error}
+                                    </div>
+                                )}
 
                                 <button
                                     type="submit"

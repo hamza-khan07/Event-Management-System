@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
+import { formatLocalDate } from '../utils/dateUtils';
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -128,10 +129,10 @@ const OrganizerParticipantsPage = () => {
         setSelectedParticipant(null);
     };
 
-    // ── Date Formatter ────────────────────────────────────────────
+    // ── Date Formatter (timezone-safe) ────────────────────────────
     const formatDate = (dateStr) => {
         if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('en-US', {
+        return formatLocalDate(dateStr, {
             year: 'numeric', month: 'short', day: 'numeric'
         });
     };

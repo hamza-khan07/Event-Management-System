@@ -10,7 +10,8 @@ const {
     updateEvent,
     deleteEvent,
     getPublicEvents,
-    getPublicEventById
+    getPublicEventById,
+    getHeatmapData
 } = require('../controllers/eventController');
 const validate = require('../middleware/validateMiddleware');
 const { updateEventSchema } = require('../validations/eventValidation');
@@ -20,7 +21,9 @@ const { updateEventSchema } = require('../validations/eventValidation');
 // to avoid matching strings like 'public' as an event ID.
 
 // GET /api/events/public            → Get all published events (landing & all events pages)
+// GET /api/events/public/heatmap    → Get heatmap data for events
 // GET /api/events/public/:id        → Get details for a single published event
+router.get('/public/heatmap', getHeatmapData);
 router.get('/public', getPublicEvents);
 router.get('/public/:id', getPublicEventById);
 
