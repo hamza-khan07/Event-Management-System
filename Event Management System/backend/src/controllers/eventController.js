@@ -2,6 +2,13 @@
 
 const db = require('../config/db');
 
+// Safe coordinate parser
+const parseCoordinate = (val) => {
+    if (val === undefined || val === null || val === '') return null;
+    const parsed = parseFloat(val);
+    return isNaN(parsed) ? null : parsed;
+};
+
 // ─────────────────────────────────────────────────────────────────
 // 1. CREATE EVENT
 //    Route: POST /api/events/create
@@ -17,6 +24,8 @@ const createEvent = async (req, res, next) => {
             description,
             category,
             venue,
+            latitude,               // Auto-geocoded from venue — sent by frontend
+            longitude,              // Auto-geocoded from venue — sent by frontend
             event_date,
             start_time,
             end_time,
@@ -49,18 +58,21 @@ const createEvent = async (req, res, next) => {
         const allowedStatuses = ['DRAFT', 'PUBLISHED'];
         const eventStatus = status && allowedStatuses.includes(status) ? status : 'DRAFT';
 
-        // ── DB Insert — includes registration_deadline ──
+        // ── DB Insert — includes latitude/longitude from geocoding ──
         const [result] = await db.query(
             `INSERT INTO events 
-                (company_id, title, description, category, venue, event_date, start_time, end_time,
+                (company_id, title, description, category, venue, latitude, longitude,
+                 event_date, start_time, end_time,
                  registration_deadline, capacity, status, price, image_url)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 company_id,
                 title.trim(),
                 description || null,
                 category || null,
                 venue || null,
+                parseCoordinate(latitude),
+                parseCoordinate(longitude),
                 event_date,
                 start_time,
                 end_time,
@@ -219,6 +231,8 @@ const updateEvent = async (req, res, next) => {
 
         const {
             title, description, category, venue,
+            latitude,               // Updated via geocoding when venue changes
+            longitude,              // Updated via geocoding when venue changes
             event_date, start_time, end_time,
             registration_deadline,   // Updated deadline (must be <= event_date)
             capacity, price, image_url, status
@@ -245,13 +259,21 @@ const updateEvent = async (req, res, next) => {
         const allowedStatuses = ['DRAFT', 'PUBLISHED'];
         const newStatus = status && allowedStatuses.includes(status) ? status : null;
 
-        // 4. Execute update — COALESCE keeps the existing DB value if a field is not provided
+        // 4. Parse coordinates safely
+        const parsedLat = parseCoordinate(latitude);
+        const parsedLng = parseCoordinate(longitude);
+
+        // 5. Execute update — lat/lng use direct assignment (not COALESCE) so they always
+        //    reflect whatever the frontend sends. All other fields use COALESCE so that
+        //    partial updates (e.g. status-only change) don't wipe other fields.
         await db.query(
             `UPDATE events 
              SET title                 = COALESCE(?, title),
                  description           = COALESCE(?, description),
                  category              = COALESCE(?, category),
                  venue                 = COALESCE(?, venue),
+                 latitude              = ?,
+                 longitude             = ?,
                  event_date            = COALESCE(?, event_date),
                  start_time            = COALESCE(?, start_time),
                  end_time              = COALESCE(?, end_time),
@@ -261,8 +283,12 @@ const updateEvent = async (req, res, next) => {
                  image_url             = COALESCE(?, image_url),
                  status                = COALESCE(?, status)
              WHERE id = ?`,
-            [title, description, category, venue, event_date, start_time, end_time,
-             registration_deadline, capacity, price, image_url, newStatus, id]
+            [
+                title, description, category, venue,
+                parsedLat, parsedLng,
+                event_date, start_time, end_time,
+                registration_deadline, capacity, price, image_url, newStatus, id
+            ]
         );
 
         const statusMsg = newStatus === 'PUBLISHED'
@@ -410,7 +436,8 @@ const getPublicEventById = async (req, res, next) => {
         const [events] = await db.query(
             `SELECT
                 e.id, e.title, e.description, e.category,
-                e.venue, e.event_date, e.start_time, e.end_time,
+                e.venue, e.latitude, e.longitude,
+                e.event_date, e.start_time, e.end_time,
                 e.registration_deadline,
                 e.capacity, e.price, e.image_url, e.status,
                 c.name as organizer_name,
@@ -435,6 +462,7 @@ const getPublicEventById = async (req, res, next) => {
     }
 };
 
+// ─────────────────────────────────────────────────────────────────
 // 8. GET HEATMAP DATA (Lightweight API for Map View)
 //    Route: GET /api/events/public/heatmap
 //    Access: Public

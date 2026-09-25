@@ -39,6 +39,10 @@ const baseEventShape = z.object({
     description: z.string().optional().nullable(),
     category:    z.string().optional().nullable(),
     venue:       z.string().optional().nullable(),
+    
+    // Allow float numbers or numeric strings (stripped to undefined if not included in schema)
+    latitude:    z.union([z.number(), z.string()]).optional().nullable(),
+    longitude:   z.union([z.number(), z.string()]).optional().nullable(),
 
     event_date: dateStringOrObject,
 

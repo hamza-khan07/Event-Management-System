@@ -2,7 +2,7 @@
 // Reusable form component shared across both Create and Edit event flows (DRY).
 // Configured dynamically via mode="create" or mode="edit" prop.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toDateInputValue } from '../../utils/dateUtils';
@@ -11,6 +11,9 @@ const EVENT_CATEGORIES = [
     'Conference', 'Workshop', 'Seminar', 'Webinar',
     'Sports', 'Concert', 'Exhibition', 'Networking', 'Training', 'Other'
 ];
+
+// Base URL for all API calls — change to env var before deploying to production
+const API_BASE = 'http://localhost:5000';
 
 const FormField = ({ label, required, error, children }) => (
     <div>
@@ -44,10 +47,17 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
 
     const [isFree, setIsFree] = useState(true);
 
+    // ── Venue autocomplete state ──
+    const [venueSuggestions, setVenueSuggestions] = useState([]);
+    const [venueLoading, setVenueLoading] = useState(false);
+    const venueContainerRef = useRef(null);  // For click-outside detection
+    const venueDebounceRef  = useRef(null);  // Tracks active debounce timer
+
     const [formData, setFormData] = useState({
         title: '', description: '', category: '', venue: '',
+        latitude: null, longitude: null,       // Auto-filled by geocoding
         event_date: '', start_time: '', end_time: '',
-        registration_deadline: '',   // Required cutoff: users cannot register after this date
+        registration_deadline: '',
         capacity: '',
         status: 'DRAFT',
         price: 'Free',
@@ -62,28 +72,24 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
     // Pre-populate fields in edit mode
     useEffect(() => {
         if (isEdit && eventData) {
-            // Timezone-safe date extraction: avoids UTC shifting
             const formattedDate = toDateInputValue(eventData.event_date);
-
-            // Format "HH:MM:SS" time string down to "HH:MM" for HTML input[type=time]
             const trimTime = (t) => t ? t.substring(0, 5) : '';
-
             const rawPrice = eventData.price || 'Free';
             const isEventFree = !rawPrice || rawPrice.trim().toLowerCase() === 'free' || rawPrice.trim() === '0';
-            setIsFree(isEventFree);
-
-            // Timezone-safe deadline extraction: avoids UTC shifting
             const formattedDeadline = toDateInputValue(eventData.registration_deadline);
 
+            setIsFree(isEventFree);
             setFormData({
                 title: eventData.title || '',
                 description: eventData.description || '',
                 category: eventData.category || '',
                 venue: eventData.venue || '',
+                latitude: eventData.latitude ? parseFloat(eventData.latitude) : null,
+                longitude: eventData.longitude ? parseFloat(eventData.longitude) : null,
                 event_date: formattedDate,
                 start_time: trimTime(eventData.start_time),
                 end_time: trimTime(eventData.end_time),
-                registration_deadline: formattedDeadline,   // Pre-populate from existing event
+                registration_deadline: formattedDeadline,
                 capacity: eventData.capacity || '',
                 status: eventData.status || 'DRAFT',
                 price: isEventFree ? 'Free' : rawPrice,
@@ -91,6 +97,117 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             });
         }
     }, [isEdit, eventData]);
+
+    // Close dropdown when user clicks outside the venue container
+    useEffect(() => {
+        const onClickOutside = (e) => {
+            if (venueContainerRef.current && !venueContainerRef.current.contains(e.target)) {
+                setVenueSuggestions([]);
+            }
+        };
+        document.addEventListener('mousedown', onClickOutside);
+        return () => document.removeEventListener('mousedown', onClickOutside);
+    }, []);
+
+    // Called on every keystroke in Venue field.
+    // ── Dual-source search: Nominatim + Photon API called in parallel ──────────
+    // OSM/Nominatim and Photon have different indexing so combining them gives
+    // far better coverage — especially for Pakistani venues and sub-locations.
+    const handleVenueChange = (e) => {
+        const val = e.target.value;
+
+        // Coordinates are cleared only when the field is fully empty.
+        // For non-empty edits (e.g. adding ", Hall 3"), venue text updates but coords stay.
+        if (val.trim() === '') {
+            setFormData(prev => ({ ...prev, venue: val, latitude: null, longitude: null }));
+        } else {
+            setFormData(prev => ({ ...prev, venue: val }));
+        }
+        if (errors.venue) setErrors(prev => ({ ...prev, venue: '' }));
+        setApiError('');
+
+        // Cancel the previous pending search
+        if (venueDebounceRef.current) clearTimeout(venueDebounceRef.current);
+
+        if (!val || val.length < 3) {
+            setVenueSuggestions([]);
+            setVenueLoading(false);
+            return;
+        }
+
+        // Schedule fresh search after 600ms of inactivity
+        venueDebounceRef.current = setTimeout(async () => {
+            setVenueLoading(true);
+            try {
+                const encoded = encodeURIComponent(val);
+
+                // ── Fire both APIs simultaneously ──
+                const [nominatimRes, photonRes] = await Promise.allSettled([
+                    fetch(
+                        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=5&addressdetails=0`,
+                        { headers: { 'Accept-Language': 'en' } }
+                    ).then(r => r.ok ? r.json() : []),
+                    fetch(
+                        `https://photon.komoot.io/api/?q=${encoded}&limit=5&lang=en`
+                    ).then(r => r.ok ? r.json() : { features: [] })
+                ]);
+
+                // ── Parse Nominatim results (already in our format) ──
+                const fromNominatim = nominatimRes.status === 'fulfilled'
+                    ? (Array.isArray(nominatimRes.value) ? nominatimRes.value : [])
+                    : [];
+
+                // ── Parse Photon results (GeoJSON → normalize to Nominatim shape) ──
+                const fromPhoton = photonRes.status === 'fulfilled' && photonRes.value?.features
+                    ? photonRes.value.features.map((f, i) => {
+                        const p = f.properties;
+                        const nameParts = [
+                            p.name,
+                            p.street ? `${p.housenumber || ''} ${p.street}`.trim() : null,
+                            p.district || p.suburb,
+                            p.city,
+                            p.state,
+                            p.country
+                        ].filter(Boolean);
+                        return {
+                            place_id: `photon_${p.osm_id || i}`,
+                            display_name: nameParts.join(', '),
+                            lat: f.geometry.coordinates[1].toString(),  // GeoJSON: [lng, lat]
+                            lon: f.geometry.coordinates[0].toString(),
+                        };
+                    })
+                    : [];
+
+                // ── Merge + deduplicate (same coords rounded to 3 dp = same place) ──
+                const seen = new Set();
+                const merged = [...fromNominatim, ...fromPhoton].filter(place => {
+                    const key = `${parseFloat(place.lat).toFixed(3)},${parseFloat(place.lon).toFixed(3)}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                }).slice(0, 8);
+
+                setVenueSuggestions(merged);
+            } catch {
+                setVenueSuggestions([]);
+            } finally {
+                setVenueLoading(false);
+            }
+        }, 600);
+    };
+
+    // Called when organizer clicks a suggestion from the dropdown
+    const handleVenueSelect = (place) => {
+        setFormData(prev => ({
+            ...prev,
+            venue:     place.display_name,
+            latitude:  parseFloat(place.lat),
+            longitude: parseFloat(place.lon),
+        }));
+        setVenueSuggestions([]);
+        setVenueLoading(false);
+        if (venueDebounceRef.current) clearTimeout(venueDebounceRef.current);
+    };
 
 
     const handleChange = (e) => {
@@ -142,15 +259,19 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
 
         const payload = {
             ...formData,
-            status: overrideStatus ?? formData.status,
-            price: isFree ? 'Free' : formData.price.trim(),
-            image_url: formData.image_url?.trim() || null
+            status:    overrideStatus ?? formData.status,
+            price:     isFree ? 'Free' : formData.price.trim(),
+            image_url: formData.image_url?.trim() || null,
+            // Always send current coordinates — whatever is in formData goes to DB directly.
+            // Dropdown selection updates formData.lat/lng; field clear resets them to null.
+            latitude:  formData.latitude  ?? null,
+            longitude: formData.longitude ?? null,
         };
 
         try {
             const res = isEdit
-                ? await axios.put(`http://localhost:5000/api/events/${eventId}`, payload, { withCredentials: true })
-                : await axios.post('http://localhost:5000/api/events/create', payload, { withCredentials: true });
+                ? await axios.put(`${API_BASE}/api/events/${eventId}`, payload, { withCredentials: true })
+                : await axios.post(`${API_BASE}/api/events/create`, payload, { withCredentials: true });
 
             if (res.data.success) {
                 setSuccessMsg(res.data.message);
@@ -169,15 +290,15 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         submitWithStatus(formData.status);
     };
 
+    // handleSaveAsDraft / handlePublish override the status without a redundant state update
+    // because submitWithStatus() already uses the overrideStatus argument directly.
     const handleSaveAsDraft = (e) => {
         e.preventDefault();
-        setFormData(prev => ({ ...prev, status: 'DRAFT' }));
         submitWithStatus('DRAFT');
     };
 
     const handlePublish = (e) => {
         e.preventDefault();
-        setFormData(prev => ({ ...prev, status: 'PUBLISHED' }));
         submitWithStatus('PUBLISHED');
     };
 
@@ -334,11 +455,55 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             </SectionCard>
 
             <SectionCard title="Venue & Capacity">
+                {/* ── Venue Autocomplete ── */}
                 <FormField label="Venue">
-                    <input type="text" name="venue" value={formData.venue} onChange={handleChange}
-                        placeholder="e.g. Lahore Expo Centre, Hall 3"
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    <div className="relative" ref={venueContainerRef}>
+                        <input
+                            type="text"
+                            name="venue"
+                            value={formData.venue}
+                            onChange={handleVenueChange}
+                            autoComplete="off"
+                            placeholder="e.g. Lahore Expo Centre, Hall 3"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+
+                        {/* Loading spinner */}
+                        {venueLoading && (
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 animate-pulse">
+                                Searching…
+                            </span>
+                        )}
+
+                        {/* Suggestions dropdown */}
+                        {venueSuggestions.length > 0 && (
+                            <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                                {venueSuggestions.map((place) => (
+                                    <li
+                                        key={place.place_id}
+                                        onMouseDown={() => handleVenueSelect(place)}
+                                        className="px-3 py-2.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 cursor-pointer border-b border-gray-100 last:border-0 transition"
+                                    >
+                                        📍 {place.display_name}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* Coordinate detection badge */}
+                    {formData.latitude && formData.longitude ? (
+                        <p className="text-[11px] text-emerald-600 mt-1.5 flex items-center gap-1">
+                            ✓ Location detected: {parseFloat(formData.latitude).toFixed(5)}, {parseFloat(formData.longitude).toFixed(5)}
+                        </p>
+                    ) : (
+                        <p className="text-[11px] text-gray-400 mt-1">
+                            Type a venue name and select from suggestions. For specific halls (e.g. Hall 3),
+                            search the main venue first, select it — then edit the text to add hall details.
+                        </p>
+                    )}
                 </FormField>
+
                 <FormField label="Maximum Capacity" required error={errors.capacity}>
                     <input type="number" name="capacity" value={formData.capacity} onChange={handleChange} min={1}
                         placeholder="e.g. 500"
@@ -371,11 +536,10 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 <SectionCard title="Publishing Status">
                     <div className="flex items-center gap-2 mb-3">
                         <span className="text-xs text-gray-500 font-medium">Current Status:</span>
-                        <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full uppercase ${
-                            formData.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700'
-                            : formData.status === 'CANCELLED' ? 'bg-red-100 text-red-600'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
+                        <span className={`inline-block px-2.5 py-1 text-[10px] font-bold rounded-full uppercase ${formData.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700'
+                                : formData.status === 'CANCELLED' ? 'bg-red-100 text-red-600'
+                                    : 'bg-gray-100 text-gray-600'
+                            }`}>
                             {formData.status}
                         </span>
                     </div>
@@ -418,11 +582,10 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 ) : (
                     /* Create mode: single button whose label matches selected status radio */
                     <button type="submit" disabled={submitting || !!successMsg}
-                        className={`px-8 py-2.5 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 ${
-                            formData.status === 'PUBLISHED'
+                        className={`px-8 py-2.5 text-sm font-semibold text-white rounded-lg transition disabled:opacity-60 ${formData.status === 'PUBLISHED'
                                 ? 'bg-emerald-600 hover:bg-emerald-700'
                                 : 'bg-blue-600 hover:bg-blue-700'
-                        }`}>
+                            }`}>
                         {submitting
                             ? (formData.status === 'PUBLISHED' ? 'Publishing...' : 'Saving Draft...')
                             : (formData.status === 'PUBLISHED' ? '↑ Publish Event' : '💾 Save as Draft')}
