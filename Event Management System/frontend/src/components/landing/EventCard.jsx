@@ -44,20 +44,23 @@ const EventCard = ({ event }) => {
         : rawTime || '';
 
     // ── Registration Deadline Logic ─────────────────────────────────────────
-    // isRegistrationClosed handles the same-day rule: if deadline == event_date,
-    // the card stays open until start_time (not just midnight).
+    // isRegistrationClosed uses the organizer-set closing time.
     const registrationClosed = isRegistrationClosed(
         event.registration_deadline,
-        event.event_date,
-        event.start_time
+        event.registration_deadline_time
     );
     const daysLeft = daysUntilDeadline(event.registration_deadline);
 
-    // Detect same-day deadline for badge label refinement
+    // Detect if deadline is today
     const todayStr       = new Date().toLocaleDateString('sv-SE');
     const deadlineDayStr = String(event.registration_deadline || '').split('T')[0];
-    const eventDayStr2   = String(event.event_date || '').split('T')[0];
-    const isSameDayDeadline = deadlineDayStr === eventDayStr2 && deadlineDayStr === todayStr;
+    const isDeadlineToday = deadlineDayStr === todayStr;
+
+    // Format closing time for badge display (e.g. "5:00 PM")
+    const deadlineTimeFormatted = event.registration_deadline_time
+        ? new Date(`1970-01-01T${event.registration_deadline_time}`)
+              .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : null;
 
     // Format deadline for display (e.g. "Sep 15, 2026")
     const deadlineFormatted = event.registration_deadline
@@ -114,8 +117,10 @@ const EventCard = ({ event }) => {
                     >
                         {registrationClosed
                             ? <><Lock size={10} /> Closed</>
-                            : isSameDayDeadline
-                                ? <><Clock size={10} /> Closes at {time}</>
+                            : isDeadlineToday
+                                ? deadlineTimeFormatted
+                                    ? <><Clock size={10} /> Closes at {deadlineTimeFormatted}</>
+                                    : <><Clock size={10} /> Closes Today</>
                                 : daysLeft === 0
                                     ? <><Clock size={10} /> Closes Today</>
                                     : daysLeft !== null && daysLeft <= 3

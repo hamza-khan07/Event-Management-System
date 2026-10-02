@@ -53,9 +53,18 @@ const baseEventShape = z.object({
         .regex(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, 'Invalid end time format. Use HH:MM or HH:MM:SS.'),
 
     // Registration cutoff date — required on create, optional on partial updates.
-    // After this date, users cannot register for the event.
+    // After this date + closing time, users cannot register for the event.
     // Cross-field rule (must be <= event_date) is enforced via .refine() below.
     registration_deadline: deadlineDatePreprocess,
+
+    // Mandatory closing time on the deadline date.
+    // Organizers must specify the exact time registration closes.
+    registration_deadline_time: z.string({
+        message: 'Registration closing time is required.'
+    })
+        .trim()
+        .min(1, 'Registration closing time is required.')
+        .regex(/^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/, 'Invalid closing time format. Use HH:MM or HH:MM:SS.'),
 
     // Coerce converts numeric string representations (e.g. "100") to integer 100
     capacity: z.coerce.number({
@@ -72,9 +81,8 @@ const baseEventShape = z.object({
     status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT')
 });
 
-// ─── Cross-field refine helper ────────────────────────────────────────────────
-// Ensures registration_deadline is on or before event_date.
-// Applied to both create and update schemas after the object shape is defined.
+// ─── Cross-field refine helpers ───────────────────────────────────────────────
+// 1. Ensures registration_deadline is on or before event_date.
 const deadlineRefine = (data) => {
     if (!data.registration_deadline || !data.event_date) return true;
     return data.registration_deadline <= data.event_date;
@@ -84,13 +92,35 @@ const deadlineRefineConfig = {
     path: ['registration_deadline']
 };
 
+// 2. If deadline date is on the event date, closing time cannot be after event start time.
+const deadlineTimeRefine = (data) => {
+    if (!data.registration_deadline || !data.event_date || !data.registration_deadline_time || !data.start_time) return true;
+    const d1 = data.registration_deadline instanceof Date
+        ? data.registration_deadline.toISOString().slice(0, 10)
+        : String(data.registration_deadline).slice(0, 10);
+    const d2 = data.event_date instanceof Date
+        ? data.event_date.toISOString().slice(0, 10)
+        : String(data.event_date).slice(0, 10);
+
+    if (d1 === d2) {
+        return data.registration_deadline_time <= data.start_time;
+    }
+    return true;
+};
+const deadlineTimeRefineConfig = {
+    message: 'Registration closing time cannot be after event start time when deadline is on the event day.',
+    path: ['registration_deadline_time']
+};
+
 
 // ─────────────────────────────────────────────────────────────────
 // CREATE EVENT SCHEMA
 // All fields validated strictly. Used for POST /api/events/create.
-// Cross-field refine added after the object definition (NOT before .partial()).
+// Cross-field refines added after the object definition (NOT before .partial()).
 // ─────────────────────────────────────────────────────────────────
-const createEventSchema = baseEventShape.refine(deadlineRefine, deadlineRefineConfig);
+const createEventSchema = baseEventShape
+    .refine(deadlineRefine, deadlineRefineConfig)
+    .refine(deadlineTimeRefine, deadlineTimeRefineConfig);
 
 
 // ─────────────────────────────────────────────────────────────────
@@ -110,11 +140,12 @@ const updateEventStatusSchema = z.object({
 // UPDATE EVENT SCHEMA
 // .partial() must be called on the BASE shape (before any .refine()),
 // because Zod v4 disallows .partial() on refined schemas.
-// We then re-apply the cross-field refine() after .partial().
+// We then re-apply the cross-field refines after .partial().
 // ─────────────────────────────────────────────────────────────────
 const updateEventSchema = baseEventShape
     .partial()
-    .refine(deadlineRefine, deadlineRefineConfig);
+    .refine(deadlineRefine, deadlineRefineConfig)
+    .refine(deadlineTimeRefine, deadlineTimeRefineConfig);
 
 
 module.exports = {

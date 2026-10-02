@@ -29,7 +29,8 @@ const createEvent = async (req, res, next) => {
             event_date,
             start_time,
             end_time,
-            registration_deadline,   // Required cutoff date for registrations
+            registration_deadline,       // Required cutoff date for registrations
+            registration_deadline_time,  // Optional: exact closing time on deadline day
             capacity,
             status,
             price,        // Ticket price — e.g., "Free" or "PKR 2,500"
@@ -63,8 +64,9 @@ const createEvent = async (req, res, next) => {
             `INSERT INTO events 
                 (company_id, title, description, category, venue, latitude, longitude,
                  event_date, start_time, end_time,
-                 registration_deadline, capacity, status, price, image_url)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                 registration_deadline, registration_deadline_time,
+                 capacity, status, price, image_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 company_id,
                 title.trim(),
@@ -76,7 +78,8 @@ const createEvent = async (req, res, next) => {
                 event_date,
                 start_time,
                 end_time,
-                registration_deadline,   // Stored as YYYY-MM-DD DATE string
+                registration_deadline,                 // Stored as YYYY-MM-DD DATE string
+                registration_deadline_time.trim(),     // Stored as HH:MM:SS TIME string (required)
                 capacity,
                 eventStatus,
                 price ? price.trim() : 'Free',
@@ -140,14 +143,14 @@ const getMyEvents = async (req, res, next) => {
         const dataQuery = `
             SELECT 
                 e.id, e.title, e.description, e.category, e.venue, e.event_date,
-                e.start_time, e.end_time, e.registration_deadline,
+                e.start_time, e.end_time, e.registration_deadline, e.registration_deadline_time,
                 e.capacity, e.price, e.image_url, e.status, e.created_at,
                 COUNT(r.id) as registrations
             FROM events e
             LEFT JOIN registrations r ON r.event_id = e.id AND r.status = 'REGISTERED'
             ${baseWhere}
             GROUP BY e.id, e.title, e.description, e.category, e.venue,
-                     e.event_date, e.start_time, e.end_time, e.registration_deadline,
+                     e.event_date, e.start_time, e.end_time, e.registration_deadline, e.registration_deadline_time,
                      e.capacity, e.price, e.image_url, e.status, e.created_at
             ORDER BY e.created_at DESC
             LIMIT ? OFFSET ?
@@ -234,7 +237,8 @@ const updateEvent = async (req, res, next) => {
             latitude,               // Updated via geocoding when venue changes
             longitude,              // Updated via geocoding when venue changes
             event_date, start_time, end_time,
-            registration_deadline,   // Updated deadline (must be <= event_date)
+            registration_deadline,       // Updated deadline (must be <= event_date)
+            registration_deadline_time,  // Updated closing time (optional)
             capacity, price, image_url, status
         } = req.body;
 
@@ -268,26 +272,29 @@ const updateEvent = async (req, res, next) => {
         //    partial updates (e.g. status-only change) don't wipe other fields.
         await db.query(
             `UPDATE events 
-             SET title                 = COALESCE(?, title),
-                 description           = COALESCE(?, description),
-                 category              = COALESCE(?, category),
-                 venue                 = COALESCE(?, venue),
-                 latitude              = ?,
-                 longitude             = ?,
-                 event_date            = COALESCE(?, event_date),
-                 start_time            = COALESCE(?, start_time),
-                 end_time              = COALESCE(?, end_time),
-                 registration_deadline = COALESCE(?, registration_deadline),
-                 capacity              = COALESCE(?, capacity),
-                 price                 = COALESCE(?, price),
-                 image_url             = COALESCE(?, image_url),
-                 status                = COALESCE(?, status)
+             SET title                      = COALESCE(?, title),
+                 description                = COALESCE(?, description),
+                 category                   = COALESCE(?, category),
+                 venue                      = COALESCE(?, venue),
+                 latitude                   = ?,
+                 longitude                  = ?,
+                 event_date                 = COALESCE(?, event_date),
+                 start_time                 = COALESCE(?, start_time),
+                 end_time                   = COALESCE(?, end_time),
+                 registration_deadline      = COALESCE(?, registration_deadline),
+                 registration_deadline_time = COALESCE(?, registration_deadline_time),
+                 capacity                   = COALESCE(?, capacity),
+                 price                      = COALESCE(?, price),
+                 image_url                  = COALESCE(?, image_url),
+                 status                     = COALESCE(?, status)
              WHERE id = ?`,
             [
                 title, description, category, venue,
                 parsedLat, parsedLng,
                 event_date, start_time, end_time,
-                registration_deadline, capacity, price, image_url, newStatus, id
+                registration_deadline,
+                registration_deadline_time ? registration_deadline_time.trim() : null,
+                capacity, price, image_url, newStatus, id
             ]
         );
 
@@ -386,7 +393,7 @@ const getPublicEvents = async (req, res, next) => {
             SELECT
                 e.id, e.title, e.description, e.category,
                 e.venue, e.event_date, e.start_time, e.end_time,
-                e.registration_deadline,
+                e.registration_deadline, e.registration_deadline_time,
                 e.capacity, e.price, e.image_url, e.status,
                 e.latitude, e.longitude,
                 c.name as organizer_name,
@@ -438,7 +445,7 @@ const getPublicEventById = async (req, res, next) => {
                 e.id, e.title, e.description, e.category,
                 e.venue, e.latitude, e.longitude,
                 e.event_date, e.start_time, e.end_time,
-                e.registration_deadline,
+                e.registration_deadline, e.registration_deadline_time,
                 e.capacity, e.price, e.image_url, e.status,
                 c.name as organizer_name,
                 c.id   as organizer_id,

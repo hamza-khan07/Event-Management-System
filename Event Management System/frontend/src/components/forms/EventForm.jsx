@@ -58,6 +58,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
         latitude: null, longitude: null,       // Auto-filled by geocoding
         event_date: '', start_time: '', end_time: '',
         registration_deadline: '',
+        registration_deadline_time: '',        // Required: exact closing time on deadline day
         capacity: '',
         status: 'DRAFT',
         price: 'Free',
@@ -90,6 +91,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                 start_time: trimTime(eventData.start_time),
                 end_time: trimTime(eventData.end_time),
                 registration_deadline: formattedDeadline,
+                registration_deadline_time: trimTime(eventData.registration_deadline_time),
                 capacity: eventData.capacity || '',
                 status: eventData.status || 'DRAFT',
                 price: isEventFree ? 'Free' : rawPrice,
@@ -238,6 +240,20 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             formData.registration_deadline > formData.event_date)
             newErrors.registration_deadline = 'Registration deadline cannot be after the event date.';
 
+        // Registration closing time: required and must not be after start time on event day
+        if (!formData.registration_deadline_time) {
+            newErrors.registration_deadline_time = 'Registration closing time is required.';
+        } else if (
+            formData.registration_deadline &&
+            formData.event_date &&
+            formData.registration_deadline === formData.event_date &&
+            formData.start_time &&
+            formData.registration_deadline_time > formData.start_time
+        ) {
+            newErrors.registration_deadline_time =
+                'Closing time cannot be after event start time when deadline is on the event day.';
+        }
+
         if (!formData.capacity || isNaN(parseInt(formData.capacity)) || parseInt(formData.capacity) < 1)
             newErrors.capacity = 'Capacity must be a positive number.';
 
@@ -266,6 +282,7 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
             // Dropdown selection updates formData.lat/lng; field clear resets them to null.
             latitude:  formData.latitude  ?? null,
             longitude: formData.longitude ?? null,
+            registration_deadline_time: formData.registration_deadline_time.trim(),
         };
 
         try {
@@ -450,6 +467,20 @@ const EventForm = ({ mode = 'create', eventData = null, eventId = null }) => {
                     />
                     <p className="text-[11px] text-gray-400 mt-1">
                         After this date, users will not be able to register for this event.
+                    </p>
+                </FormField>
+
+                {/* Registration Closing Time — required. Organizers must set when registration closes. */}
+                <FormField label="Registration Closing Time" required error={errors.registration_deadline_time}>
+                    <input
+                        type="time"
+                        name="registration_deadline_time"
+                        value={formData.registration_deadline_time}
+                        onChange={handleChange}
+                        className={`w-full px-3 py-2.5 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 ${errors.registration_deadline_time ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                        Registration will close at this exact time on the deadline date.
                     </p>
                 </FormField>
             </SectionCard>

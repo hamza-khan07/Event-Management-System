@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS events (
     end_time TIME NOT NULL,
     -- Registration cutoff date: registrations are blocked after this date (required)
     registration_deadline DATE NOT NULL,
+    -- Registration closing time on the deadline date: registration closes at this exact time (required)
+    registration_deadline_time TIME NOT NULL,
     capacity INT UNSIGNED NOT NULL,
     price      VARCHAR(100) NULL,
     image_url  TEXT NULL,

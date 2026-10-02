@@ -22,6 +22,7 @@ import EventDetailPage from './pages/EventDetailPage';
 import PaymentResult from './pages/PaymentResult';
 import PaymentCheckoutPage from './pages/PaymentCheckoutPage';
 import OrganizerParticipantsPage from './pages/OrganizerParticipantsPage';
+import ChatWidget from './components/ChatWidget';
 
 function App() {
   const { isAuthenticated, loading, user } = useAuth();
@@ -39,7 +40,8 @@ function App() {
   }
 
   return (
-    <Routes>
+    <>
+      <Routes>
       {/* Public landing page -- always accessible at "/" */}
       <Route path="/" element={<LandingPage />} />
 
@@ -155,6 +157,10 @@ function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+
+    {/* AI Chatbot — only visible to authenticated participants, floats on all pages */}
+    <ChatWidget />
+    </>
   );
 }
 

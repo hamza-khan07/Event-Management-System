@@ -145,15 +145,14 @@ const EventDetailPage = () => {
     const date = formatLocalDate(event.event_date, { month: 'short', day: '2-digit', year: 'numeric' });
     const time = new Date(`1970-01-01T${event.start_time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
-    // ── Registration Deadline Calculations ───────────────────────────────────────
-    // isRegistrationClosed handles the smart same-day rule:
-    //   - If deadline < today         → closed
-    //   - If deadline = today = event_date → closed only once start_time is reached
-    //   - Otherwise                   → open
+    // ── Registration Deadline Calculations ────────────────────────────────────────
+    // isRegistrationClosed uses the organizer-set closing time:
+    //   - If deadline < today          → closed
+    //   - If deadline = today and closing time set → closed once closing time passes
+    //   - If deadline = today and no closing time  → open all day
     const registrationClosed = isRegistrationClosed(
         event.registration_deadline,
-        event.event_date,
-        event.start_time
+        event.registration_deadline_time
     );
     const daysLeft          = daysUntilDeadline(event.registration_deadline);
     const deadlineFormatted = event.registration_deadline
@@ -162,19 +161,24 @@ const EventDetailPage = () => {
           })
         : null;
 
-    // Detect same-day deadline: deadline date == event date
+    // Format organizer-set closing time for display (e.g. "11:59 PM")
+    const deadlineTimeFormatted = event.registration_deadline_time
+        ? new Date(`1970-01-01T${event.registration_deadline_time}`)
+              .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+        : null;
+
+    // Is deadline TODAY?
     const todayStr       = new Date().toLocaleDateString('sv-SE');
     const deadlineDayStr = String(event.registration_deadline || '').split('T')[0];
-    const eventDayStr    = String(event.event_date || '').split('T')[0];
-    const isSameDayDeadline = deadlineDayStr === eventDayStr && deadlineDayStr === todayStr;
+    const isDeadlineToday = deadlineDayStr === todayStr;
 
-    // Minutes remaining until event start_time (for same-day deadline countdown)
-    let minutesUntilStart = null;
-    if (isSameDayDeadline && event.start_time && !registrationClosed) {
-        const [hh, mm] = event.start_time.split(':').map(Number);
-        const startMs = new Date();
-        startMs.setHours(hh, mm, 0, 0);
-        minutesUntilStart = Math.ceil((startMs - new Date()) / (1000 * 60));
+    // Minutes remaining until closing time (shown in urgency banner when <= 60 min left)
+    let minutesUntilClose = null;
+    if (isDeadlineToday && event.registration_deadline_time && !registrationClosed) {
+        const [hh, mm] = String(event.registration_deadline_time).split(':').map(Number);
+        const closeMs = new Date();
+        closeMs.setHours(hh, mm, 0, 0);
+        minutesUntilClose = Math.ceil((closeMs - new Date()) / (1000 * 60));
     }
 
     // Show urgency banner when deadline is within 3 days (but registration not yet closed)
@@ -315,14 +319,14 @@ const EventDetailPage = () => {
                                     icon={registrationClosed ? Lock : Clock}
                                     label="Registration Deadline"
                                     value={registrationClosed
-                                        ? isSameDayDeadline
-                                            ? `${deadlineFormatted} — Closed at event start`
-                                            : `${deadlineFormatted} (Closed)`
+                                        ? `${deadlineFormatted}${deadlineTimeFormatted ? ` at ${deadlineTimeFormatted}` : ''} (Closed)`
                                         : daysLeft === 0
-                                            ? isSameDayDeadline
-                                                ? `${deadlineFormatted} — Closes at ${time}`
+                                            ? deadlineTimeFormatted
+                                                ? `${deadlineFormatted} — Closes at ${deadlineTimeFormatted}`
                                                 : `${deadlineFormatted} — Closes Today!`
-                                            : deadlineFormatted
+                                            : deadlineTimeFormatted
+                                                ? `${deadlineFormatted} at ${deadlineTimeFormatted}`
+                                                : deadlineFormatted
                                     }
                                     iconColor={registrationClosed
                                         ? 'text-red-500'
@@ -341,19 +345,23 @@ const EventDetailPage = () => {
                                 <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                                 <div>
                                     <p className="text-sm font-semibold text-amber-800">
-                                        {isSameDayDeadline
-                                            ? minutesUntilStart !== null && minutesUntilStart <= 60
-                                                ? `Registration closes in ${minutesUntilStart} minute${minutesUntilStart === 1 ? '' : 's'}!`
-                                                : `Registration closes at ${time} — today!`
+                                        {isDeadlineToday
+                                            ? minutesUntilClose !== null && minutesUntilClose <= 60
+                                                ? `Registration closes in ${minutesUntilClose} minute${minutesUntilClose === 1 ? '' : 's'}!`
+                                                : deadlineTimeFormatted
+                                                    ? `Registration closes at ${deadlineTimeFormatted} today!`
+                                                    : 'Registration closes today at midnight!'
                                             : daysLeft === 0
                                                 ? 'Registration closes today!'
                                                 : `Only ${daysLeft} day${daysLeft === 1 ? '' : 's'} left to register!`
                                         }
                                     </p>
                                     <p className="text-xs text-amber-600 mt-0.5">
-                                        {isSameDayDeadline
-                                            ? `You can register until the event starts at ${time}.`
-                                            : `Deadline: ${deadlineFormatted}. Register before it's too late.`
+                                        {isDeadlineToday
+                                            ? deadlineTimeFormatted
+                                                ? `You can register until ${deadlineTimeFormatted} today.`
+                                                : `You can register until midnight tonight.`
+                                            : `Deadline: ${deadlineFormatted}${deadlineTimeFormatted ? ` at ${deadlineTimeFormatted}` : ''}. Register before it's too late.`
                                         }
                                     </p>
                                 </div>
@@ -361,7 +369,6 @@ const EventDetailPage = () => {
                         )}
 
                         {/* ── REGISTRATION CLOSED BANNER — shown when registration is locked ── */}
-                        {/* Locked either because deadline date passed, or event already started (same-day case) */}
                         {registrationClosed && (
                             <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                                 <Lock size={18} className="text-red-500 shrink-0 mt-0.5" />
@@ -370,8 +377,8 @@ const EventDetailPage = () => {
                                         Registration is closed
                                     </p>
                                     <p className="text-xs text-red-600 mt-0.5">
-                                        {isSameDayDeadline
-                                            ? `The event has already started (${time}). Registrations are no longer accepted.`
+                                        {isDeadlineToday && deadlineTimeFormatted
+                                            ? `The registration closing time (${deadlineTimeFormatted}) has passed.`
                                             : `The registration deadline (${deadlineFormatted}) has passed.`
                                         }
                                     </p>

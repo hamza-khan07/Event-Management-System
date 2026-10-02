@@ -80,28 +80,25 @@ export const isDeadlinePassed = (deadlineStr) => {
 };
 
 /**
- * Determines whether registration is truly closed, with special handling for
- * same-day deadlines: if deadline === event_date, registration stays open until
- * the event's start_time (not just midnight), then locks once the event begins.
+ * Determines whether registration is closed.
  *
  * Rules:
- *   - deadline < today            → closed (deadline date has passed)
- *   - deadline > today            → open
- *   - deadline === today === event_date → closed only when NOW >= start_time
- *   - deadline === today, event_date is later → open all day (already handled above)
+ *   - deadline date < today          → closed (deadline date has passed)
+ *   - deadline date > today          → open
+ *   - deadline date === today:
+ *       - if registration_deadline_time is set → closed only when NOW >= that time
+ *       - if no closing time is set        → open all day (closes at midnight)
  *
- * @param {string} deadlineStr  — 'YYYY-MM-DD'
- * @param {string} eventDateStr — 'YYYY-MM-DD'
- * @param {string} startTimeStr — 'HH:MM:SS' or 'HH:MM'
+ * @param {string} deadlineStr      — 'YYYY-MM-DD'
+ * @param {string|null} deadlineTimeStr — 'HH:MM' or 'HH:MM:SS' (organizer-set closing time)
  * @returns {boolean}  true = registration is closed
  */
-export const isRegistrationClosed = (deadlineStr, eventDateStr, startTimeStr) => {
+export const isRegistrationClosed = (deadlineStr, deadlineTimeStr = null) => {
     if (!deadlineStr) return false;
 
     const now = new Date();
     const todayStr = now.toLocaleDateString('sv-SE'); // 'YYYY-MM-DD'
     const deadlineDateStr = String(deadlineStr).split('T')[0];
-    const eventDayStr     = String(eventDateStr || '').split('T')[0];
 
     // Deadline date is strictly in the past
     if (todayStr > deadlineDateStr) return true;
@@ -110,19 +107,15 @@ export const isRegistrationClosed = (deadlineStr, eventDateStr, startTimeStr) =>
     if (todayStr < deadlineDateStr) return false;
 
     // todayStr === deadlineDateStr (deadline is TODAY)
-    // Special case: if deadline is the same calendar day as the event,
-    // lock registration once the event's start_time is reached.
-    if (deadlineDateStr === eventDayStr && startTimeStr) {
-        // Parse start_time into today's local datetime
-        const [hh, mm] = startTimeStr.split(':').map(Number);
-        const startToday = new Date();
-        startToday.setHours(hh, mm, 0, 0);
-
-        // Registration closes when the clock hits start_time
-        return now >= startToday;
+    // If organizer set a specific closing time, check it
+    if (deadlineTimeStr) {
+        const [hh, mm] = String(deadlineTimeStr).split(':').map(Number);
+        const closingTime = new Date();
+        closingTime.setHours(hh, mm, 0, 0);
+        return now >= closingTime;
     }
 
-    // Deadline is today but NOT the event day — open until end of day (midnight next day)
+    // No closing time set — open until end of day
     return false;
 };
 
