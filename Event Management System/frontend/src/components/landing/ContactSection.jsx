@@ -5,6 +5,7 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, CheckCircle2, MessageSquare } from 'lucide-react';
 import axios from 'axios';
+import { API_URL } from '../../config/api';
 
 const INITIAL_FORM_STATE = {
     name: '',
@@ -30,7 +31,7 @@ const ContactSection = () => {
         setStatus({ submitted: false, loading: true, error: null });
 
         try {
-            await axios.post('http://localhost:5000/api/contact', formData);
+            await axios.post(`${API_URL}/contact`, formData);
             setStatus({ submitted: true, loading: false, error: null });
             setFormData(INITIAL_FORM_STATE);
         } catch (error) {

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
 
@@ -54,7 +55,7 @@ const CompaniesPage = () => {
         e.preventDefault(); // Prevent page reload
         setCreating(true);
         try {
-            await axios.post('http://localhost:5000/api/companies', formData, { withCredentials: true });
+            await axios.post(`${API_URL}/companies`, formData, { withCredentials: true });
 
             // On success:
             setShowCreateModal(false);                   // Close modal
@@ -88,7 +89,7 @@ const CompaniesPage = () => {
     const fetchCompanies = async (searchTerm = '', page = 1, currentLimit = 10) => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/companies', {
+            const res = await axios.get(`${API_URL}/companies`, {
                 params: { search: searchTerm, page, limit: currentLimit }, // Dynamic limit param
                 withCredentials: true
             });
@@ -111,7 +112,7 @@ const CompaniesPage = () => {
     const handleStatusChange = async (companyId, newStatus) => {
         try {
             await axios.put(
-                `http://localhost:5000/api/companies/${companyId}/status`,
+                `${API_URL}/companies/${companyId}/status`,
                 { status: newStatus },
                 { withCredentials: true }
             );
@@ -128,7 +129,7 @@ const CompaniesPage = () => {
     const handleRowClick = async (companyId) => {
         try {
             const res = await axios.get(
-                `http://localhost:5000/api/companies/${companyId}`,
+                `${API_URL}/companies/${companyId}`,
                 { withCredentials: true }
             );
             if (res.data.success) {
@@ -158,7 +159,7 @@ const CompaniesPage = () => {
         setAddingOrg(true);
         try {
             const res = await axios.post(
-                `http://localhost:5000/api/companies/${selectedCompany.id}/organizers`,
+                `${API_URL}/companies/${selectedCompany.id}/organizers`,
                 orgForm,
                 { withCredentials: true }
             );
@@ -186,7 +187,7 @@ const CompaniesPage = () => {
         setUpdating(true);
         try {
             await axios.put(
-                `http://localhost:5000/api/companies/${selectedCompany.id}`,
+                `${API_URL}/companies/${selectedCompany.id}`,
                 editData,
                 { withCredentials: true }
             );

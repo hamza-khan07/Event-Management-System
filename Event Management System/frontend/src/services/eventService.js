@@ -3,9 +3,10 @@
 // RESPONSIBILITY: Centralized API calls for event resources.
 
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: API_URL,
     withCredentials: true,       // Send cookies for authentication
     headers: { 'Content-Type': 'application/json' }
 });

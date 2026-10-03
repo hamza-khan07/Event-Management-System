@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
 import { formatLocalDate } from '../utils/dateUtils';
@@ -32,7 +33,7 @@ const ParticipantsPage = () => {
     const fetchParticipants = async (searchTerm = '', page = 1, currentLimit = 10) => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/users', {
+            const res = await axios.get(`${API_URL}/users`, {
                 params: { role: 'PARTICIPANT', search: searchTerm, page, limit: currentLimit },
                 withCredentials: true
             });
@@ -54,7 +55,7 @@ const ParticipantsPage = () => {
     const handleRowClick = async (userId) => {
         try {
             const res = await axios.get(
-                `http://localhost:5000/api/users/${userId}`,
+                `${API_URL}/users/${userId}`,
                 { withCredentials: true }
             );
             if (res.data.success) {

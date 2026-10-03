@@ -18,10 +18,33 @@ const app = express();
 // ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(express.json());
 app.use(cookieParser());
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: 'http://localhost:5173',
-    credentials: true
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. curl, postman, mobile apps)
+        if (!origin) return callback(null, true);
+        
+        // Allow if in allowed list or matches any Vercel domain
+        const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
+        if (isAllowed) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// ─── Health Check ─────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);

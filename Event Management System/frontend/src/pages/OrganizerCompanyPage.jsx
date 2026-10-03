@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import Sidebar from '../components/dashboard/Sidebar';
 
 // ─────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ const OrganizerCompanyPage = () => {
         setLoading(true);
         try {
             const res = await axios.get(
-                'http://localhost:5000/api/organizer/my-company',
+                `${API_URL}/organizer/my-company`,
                 { withCredentials: true }
             );
             if (res.data.success) {
@@ -120,7 +121,7 @@ const OrganizerCompanyPage = () => {
         setSaveSuccess('');
         try {
             const res = await axios.put(
-                'http://localhost:5000/api/organizer/my-company',
+                `${API_URL}/organizer/my-company`,
                 formData,
                 { withCredentials: true }
             );

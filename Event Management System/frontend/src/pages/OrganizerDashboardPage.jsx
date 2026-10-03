@@ -17,6 +17,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid,
     Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -117,7 +118,7 @@ const OrganizerDashboardPage = () => {
         setError('');
         try {
             const res = await axios.get(
-                'http://localhost:5000/api/organizer/overview-stats',
+                `${API_URL}/organizer/overview-stats`,
                 { withCredentials: true }  // Send JWT cookie
             );
             if (res.data.success) {

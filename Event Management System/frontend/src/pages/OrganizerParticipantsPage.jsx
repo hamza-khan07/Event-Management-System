@@ -15,6 +15,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
 import { formatLocalDate } from '../utils/dateUtils';
@@ -82,7 +83,7 @@ const OrganizerParticipantsPage = () => {
     ) => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/organizer/my-participants', {
+            const res = await axios.get(`${API_URL}/organizer/my-participants`, {
                 params: {
                     search:  searchTerm,
                     eventId: eventId || undefined,

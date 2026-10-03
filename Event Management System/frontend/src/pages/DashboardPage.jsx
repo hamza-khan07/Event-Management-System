@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, ArrowDown } from 'lucide-react';
 import StatCard from '../components/dashboard/StatCard';
@@ -62,7 +63,7 @@ const DashboardPage = () => {
     const fetchStats = async () => {
         setLoadingStats(true);
         try {
-            const response = await axios.get('http://localhost:5000/api/dashboard/pm-stats', {
+            const response = await axios.get(`${API_URL}/dashboard/pm-stats`, {
                 withCredentials: true // Send auth cookie with request
             });
 

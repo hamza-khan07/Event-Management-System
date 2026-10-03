@@ -22,10 +22,12 @@ const sendTokenCookie = (res, user) => {
 
     const expireHours = parseInt(process.env.JWT_EXPIRES_IN, 10) || 24;
 
+    const isProduction = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
+
     res.cookie('token', token, {
-        httpOnly: true,          // Prevents client-side JS access
-        secure: false,           // Set to true in production with HTTPS
-        sameSite: 'lax',        // CSRF protection
+        httpOnly: true,                                  // Prevents client-side JS access
+        secure: isProduction,                           // Required for cross-site cookies in HTTPS
+        sameSite: isProduction ? 'none' : 'lax',        // 'none' required for cross-domain Vercel <-> Render
         maxAge: expireHours * 60 * 60 * 1000
     });
 
@@ -153,11 +155,13 @@ const login = async (req, res, next) => {
 // POST /api/auth/logout
 // ═══════════════════════════════════════════════════════════════
 const logout = (req, res) => {
-    // Clear the authentication cookie
+    const isProduction = process.env.NODE_ENV === 'production' || !!process.env.RENDER;
+
+    // Clear the authentication cookie with identical options
     res.clearCookie('token', {
         httpOnly: true,
-        secure: false,
-        sameSite: 'lax'
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax'
     });
 
     return res.status(200).json({

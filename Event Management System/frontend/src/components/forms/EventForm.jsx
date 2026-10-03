@@ -12,8 +12,10 @@ const EVENT_CATEGORIES = [
     'Sports', 'Concert', 'Exhibition', 'Networking', 'Training', 'Other'
 ];
 
-// Base URL for all API calls — change to env var before deploying to production
-const API_BASE = 'http://localhost:5000';
+import { API_BASE_URL } from '../../config/api';
+
+// Base URL for all API calls
+const API_BASE = API_BASE_URL;
 
 const FormField = ({ label, required, error, children }) => (
     <div>

@@ -19,6 +19,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
 import { formatLocalDate } from '../utils/dateUtils';
@@ -87,7 +88,7 @@ const MyEventsPage = () => {
     const fetchEvents = useCallback(async (searchTerm = '', status = '', page = 1, currentLimit = 10) => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/events/my-events', {
+            const res = await axios.get(`${API_URL}/events/my-events`, {
                 params: {
                     search: searchTerm,
                     status,            // '' = all, 'DRAFT' = drafts only, etc.
@@ -134,7 +135,7 @@ const MyEventsPage = () => {
         setStatusUpdating(true);
         try {
             await axios.put(
-                `http://localhost:5000/api/events/${eventId}/status`,
+                `${API_URL}/events/${eventId}/status`,
                 { status: newStatus },
                 { withCredentials: true }
             );
@@ -159,7 +160,7 @@ const MyEventsPage = () => {
 
         try {
             const res = await axios.delete(
-                `http://localhost:5000/api/events/${eventId}`,
+                `${API_URL}/events/${eventId}`,
                 { withCredentials: true }
             );
 

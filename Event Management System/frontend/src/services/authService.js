@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { API_URL } from '../config/api';
 
 // Base URL of our backend API
 // withCredentials: true is CRITICAL — instructs axios to send credentials/cookies with requests
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api',
+    baseURL: API_URL,
     withCredentials: true,   // Send cookies along with every request
     headers: {
         'Content-Type': 'application/json'

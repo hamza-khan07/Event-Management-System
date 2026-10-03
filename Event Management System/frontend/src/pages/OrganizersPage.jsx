@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_URL } from '../config/api';
 import Sidebar from '../components/dashboard/Sidebar';
 import Drawer from '../components/drawer';
 import { formatLocalDate } from '../utils/dateUtils';
@@ -36,7 +37,7 @@ const OrganizersPage = () => {
     const fetchOrganizers = async (searchTerm = '', page = 1, currentLimit = 10) => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/users', {
+            const res = await axios.get(`${API_URL}/users`, {
                 params: { role: 'ORGANIZER', search: searchTerm, page, limit: currentLimit },
                 withCredentials: true
             });
@@ -58,7 +59,7 @@ const OrganizersPage = () => {
     const handleStatusChange = async (userId, newStatus) => {
         try {
             await axios.put(
-                `http://localhost:5000/api/users/${userId}/status`,
+                `${API_URL}/users/${userId}/status`,
                 { status: newStatus },
                 { withCredentials: true }
             );
@@ -75,7 +76,7 @@ const OrganizersPage = () => {
     const handleRowClick = async (userId) => {
         try {
             const res = await axios.get(
-                `http://localhost:5000/api/users/${userId}`,
+                `${API_URL}/users/${userId}`,
                 { withCredentials: true }
             );
             if (res.data.success) {
