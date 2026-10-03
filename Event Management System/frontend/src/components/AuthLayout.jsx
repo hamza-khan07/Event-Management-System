@@ -2,27 +2,29 @@
 import React from 'react';
 
 /**
- * AuthLayout wrapper component.
- * Provides a unified card layout and branding header for authentication pages (Login, Register).
+ * AuthLayout — full-screen blue radial gradient background with a
+ * centred frosted-glass card.  Matches the premium glassmorphism style.
  */
-const AuthLayout = ({ title, subtitle, children }) => {
+const AuthLayout = ({ children }) => {
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-
-                {/* Common Header */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 font-bold text-xl mb-4">
-                        EMS
-                    </div>
-                    {/* Dynamic Title and Subtitle */}
-                    <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-                    <p className="text-gray-500 mt-2">{subtitle}</p>
-                </div>
-
-                {/* Main page content (e.g. form fields) */}
+        <div
+            className="min-h-screen flex items-center justify-center p-4"
+            style={{
+                background: 'radial-gradient(ellipse at 50% 40%, #3a6fa8 0%, #1e4a7a 35%, #0d2747 70%, #071a32 100%)',
+            }}
+        >
+            {/* Frosted glass card */}
+            <div
+                className="w-full max-w-sm rounded-2xl px-10 py-10 flex flex-col items-center"
+                style={{
+                    background: 'rgba(255,255,255,0.08)',
+                    backdropFilter: 'blur(18px)',
+                    WebkitBackdropFilter: 'blur(18px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0 8px 40px rgba(0,0,0,0.45)',
+                }}
+            >
                 {children}
-
             </div>
         </div>
     );
