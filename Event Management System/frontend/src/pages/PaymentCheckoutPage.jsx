@@ -188,13 +188,9 @@ const PaymentCheckoutPage = () => {
                     {/* ── Top Brand Bar ──────────────────────────────────────── */}
                     <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                                <ShieldCheck size={16} className="text-white" />
-                            </div>
-                            <div>
-                                <p className="text-white font-bold text-sm leading-none">Eventify</p>
-                                <p className="text-indigo-200 text-xs mt-0.5">Secure Payment Gateway</p>
-                            </div>
+                            <img src="/logo.png" alt="EventPulse" className="h-7 w-auto object-contain" />
+                            <div className="h-4 w-px bg-white/20 mx-1 hidden sm:block" />
+                            <p className="text-indigo-200 text-xs hidden sm:block">Secure Payment Gateway</p>
                         </div>
                         <div className="text-right">
                             <p className="text-indigo-200 text-xs">Amount Due</p>
@@ -371,7 +367,7 @@ const PaymentCheckoutPage = () => {
 
                 {/* Powered By */}
                 <p className="text-center text-slate-600 text-xs mt-4">
-                    Powered by <span className="text-slate-400 font-semibold">Eventify Pay</span> &middot; Mock Gateway v1.0
+                    Powered by <span className="text-slate-400 font-semibold">EventPulse Pay</span> &middot; Mock Gateway v1.0
                 </p>
             </div>
         </div>

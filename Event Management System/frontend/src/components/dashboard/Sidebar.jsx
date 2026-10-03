@@ -23,12 +23,13 @@ const Sidebar = ({ user, handleLogout }) => {
 
     return (
         <aside className="w-56 bg-gray-950 text-white h-full p-4 flex flex-col">
-            <div className="mb-6 flex items-center gap-3">
-                <div className="w-7 h-7 rounded bg-blue-600 font-bold flex items-center justify-center text-xs">
-                    EMS
-                </div>
-                <h2 className="text-lg font-bold tracking-wider">Dashboard</h2>
-            </div>
+            <Link to="/" className="mb-6 flex items-center group">
+                <img
+                    src="/logo.png"
+                    alt="EventPulse"
+                    className="h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                />
+            </Link>
 
             {/* ── PM-only Navigation ── */}
             {user?.role === 'PRODUCT_MANAGER' && (

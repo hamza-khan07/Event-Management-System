@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Mail, Phone, MapPin, Share2, Globe, Link2, ArrowUp } from 'lucide-react';
+import { Mail, Phone, MapPin, Share2, Globe, Link2, ArrowUp } from 'lucide-react';
 import { FaXTwitter, FaInstagram, FaLinkedinIn } from 'react-icons/fa6';
 
 const QUICK_LINKS = [
@@ -53,15 +53,16 @@ const Footer = () => {
 
                     {/* Brand & Mission */}
                     <div className="lg:col-span-4">
-                        <Link to="/" className="inline-flex items-center gap-2.5 mb-5">
-                            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                                <Calendar size={16} className="text-white" strokeWidth={2.5} />
-                            </div>
-                            <span className="text-white font-bold text-xl tracking-tight">Eventify</span>
+                        <Link to="/" className="inline-flex items-center mb-5 group">
+                            <img
+                                src="/logo.png"
+                                alt="EventPulse"
+                                className="h-8 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                            />
                         </Link>
                         <p className="text-sm text-gray-400 leading-relaxed mb-6 max-w-sm">
                             Your gateway to discovering the most exciting events. From music festivals and
-                            conferences to creative workshops, find it all on Eventify.
+                            conferences to creative workshops, find it all on EventPulse.
                         </p>
                         <div className="flex items-center gap-2.5">
                             {/* Twitter / X */}
@@ -148,8 +149,8 @@ const Footer = () => {
                             </li>
                             <li className="flex items-center gap-2.5 text-sm">
                                 <Mail size={15} className="text-indigo-400 shrink-0" />
-                                <a href="mailto:support@eventify.com" className="hover:text-white transition-colors">
-                                    support@eventify.com
+                                <a href="mailto:support@eventpulse.com" className="hover:text-white transition-colors">
+                                    support@eventpulse.com
                                 </a>
                             </li>
                             <li className="flex items-center gap-2.5 text-sm">
@@ -167,7 +168,7 @@ const Footer = () => {
             <div className="border-t border-gray-900">
                 <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-center">
                     <p className="text-xs text-gray-500">
-                        &copy; {year} Eventify. All rights reserved.
+                        &copy; {year} EventPulse. All rights reserved.
                     </p>
                 </div>
             </div>

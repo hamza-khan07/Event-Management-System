@@ -75,10 +75,10 @@ const ContactSection = () => {
                                 <h4 className="text-base font-bold text-gray-900">Email Us</h4>
                                 <p className="text-sm text-gray-500 mt-0.5">Our friendly team is here to help.</p>
                                 <a
-                                    href="mailto:support@eventify.com"
+                                    href="mailto:support@eventpulse.com"
                                     className="text-sm font-semibold text-indigo-600 hover:underline mt-2 inline-block"
                                 >
-                                    support@eventify.com
+                                    support@eventpulse.com
                                 </a>
                             </div>
                         </div>

@@ -1,6 +1,6 @@
 // frontend/src/pages/LandingPage.jsx
 //
-// RESPONSIBILITY: Main public landing page for Eventify.
+// RESPONSIBILITY: Main public landing page for EventPulse.
 
 // Structure: Navbar -> Hero -> Featured Events -> How It Works -> Contact -> Footer
 
@@ -135,7 +135,7 @@ const LandingPage = () => {
 
                     <p className="mt-5 text-base sm:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed font-normal">
                         Explore thousands of concerts, workshops, conferences, and festivals.
-                        Find your next unforgettable moment with Eventify.
+                        Find your next unforgettable moment with EventPulse.
                     </p>
 
                     {/* Search Bar */}

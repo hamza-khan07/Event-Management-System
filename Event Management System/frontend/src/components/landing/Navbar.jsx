@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Calendar, Menu, X, LogOut, User } from 'lucide-react';
+import { Menu, X, LogOut, User } from 'lucide-react';
 import { useAuth } from '../../Context/AuthContext';
 
 const NAV_LINKS = [
@@ -115,13 +115,12 @@ const Navbar = () => {
                 <div className="flex items-center justify-between h-[72px]">
 
                     {/* Brand Logo */}
-                    <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-                        <div className="w-9 h-9 bg-indigo-600 group-hover:bg-indigo-500 rounded-lg flex items-center justify-center shadow-sm transition-colors">
-                            <Calendar size={18} className="text-white" strokeWidth={2.5} />
-                        </div>
-                        <span className="font-bold text-xl tracking-tight text-white drop-shadow-sm">
-                            Eventify
-                        </span>
+                    <Link to="/" className="flex items-center shrink-0 group py-1">
+                        <img
+                            src="/logo.png"
+                            alt="EventPulse"
+                            className="h-9 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+                        />
                     </Link>
 
                     {/* Desktop Navigation Links */}

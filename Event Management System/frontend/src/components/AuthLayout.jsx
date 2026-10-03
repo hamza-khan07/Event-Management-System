@@ -1,5 +1,5 @@
-// src/components/AuthLayout.jsx
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * AuthLayout — full-screen blue radial gradient background with a
@@ -8,11 +8,15 @@ import React from 'react';
 const AuthLayout = ({ children }) => {
     return (
         <div
-            className="min-h-screen flex items-center justify-center p-4"
+            className="min-h-screen flex flex-col items-center justify-center p-4"
             style={{
                 background: 'radial-gradient(ellipse at 50% 40%, #3a6fa8 0%, #1e4a7a 35%, #0d2747 70%, #071a32 100%)',
             }}
         >
+            <Link to="/" className="mb-6 hover:scale-105 transition-transform duration-200">
+                <img src="/logo.png" alt="EventPulse" className="h-9 w-auto object-contain drop-shadow" />
+            </Link>
+
             {/* Frosted glass card */}
             <div
                 className="w-full max-w-sm rounded-2xl px-10 py-10 flex flex-col items-center"

@@ -190,7 +190,7 @@ const EventDetailPage = () => {
         tagline: event.organizer_tagline || 'Creating unforgettable live experiences in Pakistan.',
         logo:    event.organizer_logo || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?auto=format&fit=crop&w=200&q=80',
         banner:  event.organizer_banner || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1600&q=80',
-        website: event.organizer_website || 'eventify.pk',
+        website: event.organizer_website || 'eventpulse.pk',
     };
 
     return (
