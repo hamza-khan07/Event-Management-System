@@ -9,7 +9,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import CompaniesPage from './pages/companiesPage';
+import CompaniesPage from './pages/CompaniesPage';
 import OrganizersPage from './pages/OrganizersPage';
 import ParticipantsPage from './pages/ParticipantsPage';
 import OrganizerDashboardPage from './pages/OrganizerDashboardPage';
