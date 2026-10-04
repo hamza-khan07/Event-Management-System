@@ -22,6 +22,8 @@ import Footer from '../components/landing/Footer';
 import EventCard from '../components/landing/EventCard';
 import ContactSection from '../components/landing/ContactSection';
 import { getPublicEvents } from '../services/eventService';
+import { getMyRegistrations } from '../services/registrationService';
+import { useAuth } from '../Context/AuthContext';
 
 
 
@@ -62,6 +64,36 @@ const LandingPage = () => {
 
     // Featured events from API — only PUBLISHED events returned (limit=6)
     const [featuredEvents, setFeaturedEvents] = useState([]);
+
+    // Registration tracking for logged-in PARTICIPANT
+    const { isAuthenticated, user } = useAuth();
+    const [registeredEventIds, setRegisteredEventIds] = useState(new Set());
+
+    useEffect(() => {
+        if (!isAuthenticated || String(user?.role).toUpperCase() !== 'PARTICIPANT') {
+            setRegisteredEventIds(new Set());
+            return;
+        }
+
+        const fetchRegistrations = () => {
+            getMyRegistrations()
+                .then((res) => {
+                    const ids = new Set(
+                        (res.data || [])
+                            .filter((r) => r.status !== 'CANCELLED')
+                            .map((r) => String(r.event_id))
+                    );
+                    setRegisteredEventIds(ids);
+                })
+                .catch(() => {});
+        };
+
+        fetchRegistrations();
+
+        // Auto-refresh when returning to window/tab
+        window.addEventListener('focus', fetchRegistrations);
+        return () => window.removeEventListener('focus', fetchRegistrations);
+    }, [isAuthenticated, user]);
 
     useEffect(() => {
         const fetchFeatured = async () => {
@@ -212,7 +244,14 @@ const LandingPage = () => {
                     {filteredEvents.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7">
                             {filteredEvents.map((event) => (
-                                <EventCard key={event.id} event={event} />
+                                <EventCard
+                                    key={event.id}
+                                    event={event}
+                                    isRegistered={
+                                        registeredEventIds.has(String(event.id)) ||
+                                        registeredEventIds.has(Number(event.id))
+                                    }
+                                />
                             ))}
                         </div>
                     ) : (

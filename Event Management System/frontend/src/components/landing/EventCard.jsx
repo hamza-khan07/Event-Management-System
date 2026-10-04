@@ -9,7 +9,7 @@
 //   4. Seamless navigation to the event detail page (/events/:id).
 
 import React from 'react';
-import { Calendar, MapPin, Tag, Ticket, Lock, Clock } from 'lucide-react';
+import { CheckCircle2, Calendar, MapPin, Tag, Ticket, Lock, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
     isRegistrationClosed,
@@ -17,7 +17,7 @@ import {
     formatLocalDate
 } from '../../utils/dateUtils';
 
-const EventCard = ({ event }) => {
+const EventCard = ({ event, isRegistered = false }) => {
     const navigate = useNavigate();
 
     const title    = event.title;
@@ -84,9 +84,11 @@ const EventCard = ({ event }) => {
                 hover:shadow-xl hover:-translate-y-1
                 transition-all duration-200 overflow-hidden flex flex-col group
                 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400
-                ${registrationClosed
-                    ? 'border-gray-200 opacity-80'        // Slightly muted when closed
-                    : 'border-gray-100 hover:ring-2 hover:ring-indigo-200'
+                ${isRegistered
+                    ? 'border-gray-200 hover:border-gray-300 hover:ring-2 hover:ring-gray-200'
+                    : registrationClosed
+                        ? 'border-gray-200 opacity-80'
+                        : 'border-gray-100 hover:ring-2 hover:ring-indigo-200'
                 }
             `}
         >
@@ -158,8 +160,21 @@ const EventCard = ({ event }) => {
                     </div>
                 </div>
 
-                {/* ── Register Button / Closed State ───────────────────── */}
-                {registrationClosed ? (
+                {/* ── Register Button / Closed State / Already Registered ──── */}
+                {isRegistered ? (
+                    // Already registered — locked grey button (clicking still takes user to event details)
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            goToDetail();
+                        }}
+                        className="w-full mt-2 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 text-sm font-semibold rounded-xl text-center flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer shadow-sm select-none"
+                        title="Already Registered — Click to view event details"
+                    >
+                        <Lock size={15} className="text-gray-500 shrink-0" />
+                        <span>Already Registered</span>
+                    </div>
+                ) : registrationClosed ? (
                     // Registration closed state — non-interactive visual indicator
                     <div className="w-full mt-2 py-2.5 px-4 bg-gray-100 text-gray-400 text-sm font-semibold rounded-xl text-center flex items-center justify-center gap-2 cursor-default">
                         <Lock size={15} />

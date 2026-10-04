@@ -29,6 +29,7 @@ import Footer from '../components/landing/Footer';
 import RegistrationModal from '../components/events/RegistrationModal';
 import { useAuth } from '../Context/AuthContext';
 import { getPublicEventById } from '../services/eventService';
+import { checkMyRegistration } from '../services/registrationService';
 import {
     isRegistrationClosed,
     daysUntilDeadline,
@@ -60,7 +61,7 @@ const EventDetailPage = () => {
     const navigate = useNavigate();
 
     // Auth state: check if user is logged in
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
 
     // Modal visibility state
     const [showModal, setShowModal] = useState(false);
@@ -69,6 +70,10 @@ const EventDetailPage = () => {
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+
+    // Already-registered state — checked for authenticated PARTICIPANT users only
+    const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+    const [regStatus, setRegStatus] = useState(null); // 'REGISTERED' | 'PENDING' | null
 
     // Fetch event when ID changes
     useEffect(() => {
@@ -87,6 +92,19 @@ const EventDetailPage = () => {
         };
         fetchEvent();
     }, [id]);
+
+    // Check if logged-in participant is already registered for this event
+    useEffect(() => {
+        if (!isAuthenticated || user?.role !== 'PARTICIPANT') {
+            setAlreadyRegistered(false);
+            setRegStatus(null);
+            return;
+        }
+        checkMyRegistration(id).then(({ registered, status }) => {
+            setAlreadyRegistered(registered);
+            setRegStatus(status);
+        });
+    }, [id, isAuthenticated, user]);
 
     // Registration button handler — checks auth, then opens modal
     const handleRegisterClick = () => {
@@ -392,7 +410,19 @@ const EventDetailPage = () => {
                             - Logged out         → Redirect to login (with return URL)
                             - Logged in + open   → Open registration modal
                           Same-day rule: if deadline == event_date, locks at start_time not midnight */}
-                        {registrationClosed ? (
+                        {/* Priority order: 1) Already registered  2) Closed  3) Open */}
+                        {alreadyRegistered ? (
+                            // ── ALREADY REGISTERED — locked grey button ──────────
+                            <div
+                                id="already-registered-btn"
+                                className="block w-full py-4 px-6 bg-gray-100 border-2 border-gray-300 text-gray-700 font-bold text-base rounded-2xl text-center flex items-center justify-center gap-2 cursor-not-allowed select-none shadow-sm"
+                            >
+                                <Lock size={20} className="text-gray-500" />
+                                {regStatus === 'PENDING'
+                                    ? 'Payment Pending — Registered'
+                                    : 'Already Registered'}
+                            </div>
+                        ) : registrationClosed ? (
                             // Registration is locked — disabled, no-interaction state
                             <div
                                 id="register-closed-btn"
@@ -442,7 +472,16 @@ const EventDetailPage = () => {
             {showModal && !registrationClosed && (
                 <RegistrationModal
                     event={{ id, title, price, capacity }}
-                    onClose={() => setShowModal(false)}
+                    onClose={() => {
+                        setShowModal(false);
+                        // Refresh registration status — button switches to "Already Registered" instantly
+                        if (isAuthenticated && user?.role === 'PARTICIPANT') {
+                            checkMyRegistration(id).then(({ registered, status }) => {
+                                setAlreadyRegistered(registered);
+                                setRegStatus(status);
+                            });
+                        }
+                    }}
                 />
             )}
         </div>

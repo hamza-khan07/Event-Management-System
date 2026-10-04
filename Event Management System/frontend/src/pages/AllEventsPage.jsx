@@ -19,6 +19,8 @@ import Footer from '../components/landing/Footer';
 import EventCard from '../components/landing/EventCard';
 import EventHeatMap from '../components/events/EventHeatMap';
 import { getPublicEvents } from '../services/eventService';
+import { getMyRegistrations } from '../services/registrationService';
+import { useAuth } from '../Context/AuthContext';
 
 const POPULAR_CATEGORIES = ['Music', 'Technology', 'Food', 'Art', 'Business', 'Sports'];
 
@@ -71,6 +73,37 @@ const AllEventsPage = () => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    // Track which event IDs the current participant is already registered for
+    const { isAuthenticated, user } = useAuth();
+    const [registeredEventIds, setRegisteredEventIds] = useState(new Set());
+
+    // Fetch the participant's registrations (only for logged-in participants)
+    useEffect(() => {
+        if (!isAuthenticated || String(user?.role).toUpperCase() !== 'PARTICIPANT') {
+            setRegisteredEventIds(new Set());
+            return;
+        }
+
+        const fetchRegistrations = () => {
+            getMyRegistrations()
+                .then((res) => {
+                    const ids = new Set(
+                        (res.data || [])
+                            .filter((r) => r.status !== 'CANCELLED')
+                            .map((r) => String(r.event_id))
+                    );
+                    setRegisteredEventIds(ids);
+                })
+                .catch(() => {}); // Silently ignore errors
+        };
+
+        fetchRegistrations();
+
+        // Auto-refresh when tab is refocused
+        window.addEventListener('focus', fetchRegistrations);
+        return () => window.removeEventListener('focus', fetchRegistrations);
+    }, [isAuthenticated, user]);
 
     // Update search query when URL changes
     useEffect(() => {
@@ -440,7 +473,14 @@ const AllEventsPage = () => {
                         ) : displayedEvents.length > 0 ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                                 {displayedEvents.map((event) => (
-                                    <EventCard key={event.id} event={event} />
+                                    <EventCard
+                                        key={event.id}
+                                        event={event}
+                                        isRegistered={
+                                            registeredEventIds.has(String(event.id)) ||
+                                            registeredEventIds.has(Number(event.id))
+                                        }
+                                    />
                                 ))}
                             </div>
                         ) : (

@@ -40,3 +40,23 @@ export const getEventCapacity = async (eventId) => {
     const response = await api.get(`/registrations/event/${eventId}/capacity`);
     return response.data;
 };
+
+// ─── Check if current user is already registered for an event ─────────────────
+// Returns: { registered: boolean, status: string | null }
+// Used by EventDetailPage to show locked "Already Registered" button
+export const checkMyRegistration = async (eventId) => {
+    try {
+        const response = await api.get('/registrations/my');
+        const registrations = response.data?.data || [];
+        const found = registrations.find(
+            (r) => String(r.event_id) === String(eventId) && r.status !== 'CANCELLED'
+        );
+        return {
+            registered: !!found,
+            status: found?.status || null,
+        };
+    } catch {
+        return { registered: false, status: null };
+    }
+};
+
