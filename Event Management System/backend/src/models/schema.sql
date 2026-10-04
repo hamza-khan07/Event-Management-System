@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS registrations (
     ticket_count      INT NOT NULL DEFAULT 1,
     phone_number      VARCHAR(20) NULL,
     registration_code VARCHAR(20) NOT NULL UNIQUE,
-    status            ENUM('REGISTERED', 'CANCELLED') DEFAULT 'REGISTERED',
+    status            ENUM('REGISTERED', 'CANCELLED', 'PENDING') DEFAULT 'REGISTERED',
     registered_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)  REFERENCES users(id)   ON DELETE RESTRICT,
     FOREIGN KEY (event_id) REFERENCES events(id)  ON DELETE RESTRICT,
