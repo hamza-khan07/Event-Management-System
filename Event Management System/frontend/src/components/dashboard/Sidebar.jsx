@@ -21,9 +21,15 @@ const Sidebar = ({ user, handleLogout }) => {
                 : 'hover:bg-slate-800 text-slate-300'
         }`;
 
+    // Logo destination is role-aware — privileged roles stay in their portal
+    const logoTo =
+        user?.role === 'ORGANIZER' ? '/organizer/dashboard' :
+        user?.role === 'PRODUCT_MANAGER' ? '/dashboard' :
+        '/';
+
     return (
         <aside className="w-56 bg-gray-950 text-white h-full p-4 flex flex-col">
-            <Link to="/" className="mb-6 flex items-center group">
+            <Link to={logoTo} className="mb-6 flex items-center group">
                 <img
                     src="/logo.png"
                     alt="EventPulse"
