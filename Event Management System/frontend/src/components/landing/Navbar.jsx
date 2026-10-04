@@ -16,6 +16,14 @@ const NAV_LINKS = [
     { label: 'Contact', href: '#contact' },
 ];
 
+// Returns the correct destination for the logo click based on user role.
+const getLogoDestination = (user) => {
+    if (!user) return '/';
+    if (user.role === 'ORGANIZER') return '/organizer/dashboard';
+    if (user.role === 'PRODUCT_MANAGER') return '/dashboard';
+    return '/'; // PARTICIPANT or unknown → landing page
+};
+
 const Navbar = () => {
     const { isAuthenticated, user, logout } = useAuth();
     const navigate = useNavigate();
@@ -23,6 +31,8 @@ const Navbar = () => {
     const [scrolled, setScrolled] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [activeNav, setActiveNav] = useState('#home');
+
+    const logoTo = getLogoDestination(user);
 
     const isLandingPage = location.pathname === '/';
     // Transparent only on the landing page when scrolled to the top and mobile menu is closed
@@ -114,8 +124,8 @@ const Navbar = () => {
             <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-[72px]">
 
-                    {/* Brand Logo */}
-                    <Link to="/" className="flex items-center shrink-0 group py-1">
+                    {/* Brand Logo — destination is role-aware: Organizer → /organizer/dashboard, PM → /dashboard, Participant/guest → / */}
+                    <Link to={logoTo} className="flex items-center shrink-0 group py-1">
                         <img
                             src="/logo.png"
                             alt="EventPulse"

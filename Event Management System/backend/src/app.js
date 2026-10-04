@@ -28,7 +28,7 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (e.g. curl, postman, mobile apps)
         if (!origin) return callback(null, true);
-        
+
         // Allow if in allowed list or matches any Vercel domain
         const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app');
         if (isAllowed) {
@@ -41,10 +41,9 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'ok', uptime: process.uptime() });
-});
+const db = require('./config/db');
+
+
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
@@ -57,5 +56,6 @@ app.use('/api/registrations', registrationRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/chat', chatRoutes);
+
 
 module.exports = app;

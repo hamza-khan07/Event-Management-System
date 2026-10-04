@@ -16,8 +16,10 @@ const sendTokenCookie = (res, user) => {
         company_id: user.company_id
     };
 
+    const expireTime = process.env.JWT_EXPIRES_IN || '24h';
+
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN
+        expiresIn: expireTime
     });
 
     const expireHours = parseInt(process.env.JWT_EXPIRES_IN, 10) || 24;
