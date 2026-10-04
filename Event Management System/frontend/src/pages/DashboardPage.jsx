@@ -53,6 +53,13 @@ const DashboardPage = () => {
     };
 
 
+    // Role guard: Only PRODUCT_MANAGER can view this dashboard
+    useEffect(() => {
+        if (user && user.role !== 'PRODUCT_MANAGER') {
+            navigate(user.role === 'ORGANIZER' ? '/organizer/dashboard' : '/', { replace: true });
+        }
+    }, [user, navigate]);
+
     // Fetch stats on mount (for Product Manager role only)
     useEffect(() => {
         if (user?.role === 'PRODUCT_MANAGER') {
@@ -251,14 +258,7 @@ const DashboardPage = () => {
 
 
 
-                {/* Non-Product Manager fallback */}
-                {user?.role !== 'PRODUCT_MANAGER' && (
-                    <div className="bg-white p-8 rounded-xl border border-blue-100 shadow-sm text-center bg-blue-50">
-                        <p className="text-blue-800 font-medium">
-                            Your specific dashboard features will be implemented soon!
-                        </p>
-                    </div>
-                )}
+
 
             </main>
         </div>

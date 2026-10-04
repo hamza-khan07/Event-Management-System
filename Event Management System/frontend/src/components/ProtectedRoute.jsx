@@ -35,8 +35,10 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     // 3. Enforce allowed roles if specified
     if (allowedRoles && allowedRoles.length > 0 && user) {
         if (!allowedRoles.includes(user.role)) {
-            // Redirect unauthorized users back to default dashboard
-            return <Navigate to="/dashboard" replace />;
+            // Redirect unauthorized users to their respective home
+            if (user.role === 'ORGANIZER') return <Navigate to="/organizer/dashboard" replace />;
+            if (user.role === 'PRODUCT_MANAGER') return <Navigate to="/dashboard" replace />;
+            return <Navigate to="/" replace />;
         }
     }
 

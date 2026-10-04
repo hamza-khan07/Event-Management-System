@@ -7,7 +7,7 @@
 //   ?status=failed&reason=Payment+declined
 
 import { useSearchParams, Link } from 'react-router-dom';
-import { CheckCircle2, XCircle, Home, Ticket } from 'lucide-react';
+import { CheckCircle2, XCircle, Home } from 'lucide-react';
 
 const PaymentResult = () => {
     // Extract query parameters from URL
@@ -43,7 +43,7 @@ const PaymentResult = () => {
                 {/* Sub-message */}
                 <p className="text-gray-500 text-sm mb-6">
                     {isSuccess
-                        ? 'Your ticket has been confirmed. Check your registrations for details.'
+                        ? 'Your ticket has been confirmed successfully!'
                         : reason || 'Something went wrong with your payment. Please try again.'
                     }
                 </p>
@@ -70,38 +70,39 @@ const PaymentResult = () => {
                     </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="space-y-3">
+                {/* Action Buttons — only Go to Home is shown */}
+                <div>
                     {isSuccess ? (
                         <Link
-                            to="/dashboard"
-                            className="flex items-center justify-center gap-2 w-full py-3 
-                                       bg-indigo-600 hover:bg-indigo-700 text-white 
-                                       font-bold rounded-xl transition cursor-pointer"
+                            to="/"
+                            className="flex items-center justify-center gap-2 w-full py-3.5 
+                                       bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white 
+                                       font-bold rounded-xl transition cursor-pointer shadow-md"
                         >
-                            <Ticket size={16} />
-                            View My Registrations
+                            <Home size={18} />
+                            Go to Home
                         </Link>
                     ) : (
-                        <button
-                            onClick={() => window.history.back()}
-                            className="flex items-center justify-center gap-2 w-full py-3 
-                                       bg-red-500 hover:bg-red-600 text-white 
-                                       font-bold rounded-xl transition cursor-pointer"
-                        >
-                            Try Again
-                        </button>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => window.history.back()}
+                                className="flex items-center justify-center gap-2 w-full py-3 
+                                           bg-red-500 hover:bg-red-600 text-white 
+                                           font-bold rounded-xl transition cursor-pointer"
+                            >
+                                Try Again
+                            </button>
+                            <Link
+                                to="/"
+                                className="flex items-center justify-center gap-2 w-full py-3 
+                                           bg-gray-100 hover:bg-gray-200 text-gray-700 
+                                           font-semibold text-sm rounded-xl transition cursor-pointer"
+                            >
+                                <Home size={16} />
+                                Go to Home
+                            </Link>
+                        </div>
                     )}
-
-                    <Link
-                        to="/"
-                        className="flex items-center justify-center gap-2 w-full py-3 
-                                   bg-gray-100 hover:bg-gray-200 text-gray-700 
-                                   font-semibold text-sm rounded-xl transition cursor-pointer"
-                    >
-                        <Home size={16} />
-                        Back to Home
-                    </Link>
                 </div>
             </div>
         </div>

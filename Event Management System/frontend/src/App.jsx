@@ -42,125 +42,126 @@ function App() {
   return (
     <>
       <Routes>
-      {/* Public landing page -- always accessible at "/" */}
-      <Route path="/" element={<LandingPage />} />
+        {/* Public landing page -- always accessible at "/" */}
+        <Route path="/" element={<LandingPage />} />
 
-      {/* Public: All Events page */}
-      <Route path="/events" element={<AllEventsPage />} />
+        {/* Public: All Events page */}
+        <Route path="/events" element={<AllEventsPage />} />
 
-      {/* Public: Single Event Detail page — fetches event by :id */}
+        {/* Public: Single Event Detail page — fetches event by :id */}
 
-      <Route path="/events/:id" element={<EventDetailPage />} />
+        <Route path="/events/:id" element={<EventDetailPage />} />
 
-      {/* Auth Routes */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+        {/* Auth Routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected: Generic dashboard */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Protected: Generic dashboard */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Protected: PRODUCT_MANAGER Routes */}
-      <Route
-        path="/companies"
-        element={
-          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
-            <CompaniesPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/organizers"
-        element={
-          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
-            <OrganizersPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/participants"
-        element={
-          <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
-            <ParticipantsPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Protected: PRODUCT_MANAGER Routes */}
+        <Route
+          path="/companies"
+          element={
+            <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
+              <CompaniesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizers"
+          element={
+            <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
+              <OrganizersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/participants"
+          element={
+            <ProtectedRoute allowedRoles={['PRODUCT_MANAGER']}>
+              <ParticipantsPage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Protected: ORGANIZER Routes */}
-      <Route
-        path="/organizer/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={['ORGANIZER']}>
-            <OrganizerDashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/organizer/company"
-        element={
-          <ProtectedRoute allowedRoles={['ORGANIZER']}>
-            <OrganizerCompanyPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/organizer/events"
-        element={
-          <ProtectedRoute allowedRoles={['ORGANIZER']}>
-            <MyEventsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/organizer/events/create"
-        element={
-          <ProtectedRoute allowedRoles={['ORGANIZER']}>
-            <CreateEventPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/organizer/events/edit/:id"
-        element={
-          <ProtectedRoute allowedRoles={['ORGANIZER']}>
-            <EditEventPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/organizer/participants"
-        element={
-          <ProtectedRoute allowedRoles={['ORGANIZER']}>
-            <OrganizerParticipantsPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Protected: ORGANIZER Routes */}
+        <Route
+          path="/organizer/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['ORGANIZER']}>
+              <OrganizerDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizer/company"
+          element={
+            <ProtectedRoute allowedRoles={['ORGANIZER']}>
+              <OrganizerCompanyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizer/events"
+          element={
+            <ProtectedRoute allowedRoles={['ORGANIZER']}>
+              <MyEventsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizer/events/create"
+          element={
+            <ProtectedRoute allowedRoles={['ORGANIZER']}>
+              <CreateEventPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizer/events/edit/:id"
+          element={
+            <ProtectedRoute allowedRoles={['ORGANIZER']}>
+              <EditEventPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/organizer/participants"
+          element={
+            <ProtectedRoute allowedRoles={['ORGANIZER']}>
+              <OrganizerParticipantsPage />
+            </ProtectedRoute>
+          }
+        />
 
 
-      <Route path="/payment/result" element={<PaymentResult />} />
+        <Route path="/payment/result" element={<PaymentResult />} />
 
-      {/* Protected: Mock Payment Checkout */}
-      <Route
-        path="/payment/checkout"
-        element={
-          <ProtectedRoute>
-            <PaymentCheckoutPage />
-          </ProtectedRoute>
-        }
-      />
+        {/* Protected: Mock Payment Checkout */}
+        <Route
+          path="/payment/checkout"
+          element={
+            <ProtectedRoute>
+              <PaymentCheckoutPage />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
-    {/* AI Chatbot — only visible to authenticated participants, floats on all pages */}
-    <ChatWidget />
+      {/* AI Chatbot — only visible to authenticated participants, floats on all pages */}
+      <ChatWidget />
     </>
+
   );
 }
 
